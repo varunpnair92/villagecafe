@@ -217,8 +217,9 @@
     const menuData = {{ menus_json|safe }};
     
     let activeCategory = menuData[0];
-    let quantities = {}; // store item count per item_id dynamically: {item_id: quantity}
     let cart = []; // store selected items: [{id, name, price, quantity, total}]
+    let editingOrderId = null;
+    let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210' };
 
     // Render category selectors
     function renderCategories() {
@@ -449,8 +450,6 @@
         }
     }
 
-    let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210' };
-
     function loadReceiptSettings() {
         const settingsRaw = localStorage.getItem('pos_receipt_settings');
         if (settingsRaw) {
@@ -501,7 +500,8 @@
 
     async function submitOrder(orderPayload, shouldPrint = false) {
         try {
-            const response = await fetch('/session/checkout/', {
+            const url = editingOrderId ? `/order/update/${editingOrderId}/` : '/session/checkout/';
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -516,7 +516,7 @@
                     printPOSReceipt();
                     setTimeout(() => { window.location.href = '/orders/'; }, 300);
                 } else {
-                    alert('Order placed successfully!');
+                    alert(editingOrderId ? 'Order updated successfully!' : 'Order placed successfully!');
                     window.location.href = '/orders/';
                 }
             } else {
@@ -534,8 +534,6 @@
             return;
         }
 
-        // Load settings
-        let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210' };
         const raw = localStorage.getItem('pos_receipt_settings');
         if (raw) { try { receiptSettings = JSON.parse(raw); } catch(e){} }
 
@@ -639,9 +637,38 @@ ${receiptSettings.phone ? `<p>Mob: ${receiptSettings.phone}</p>` : ''}
         }
     }
 
+    // Initialize Edit Order Logic
+    async function checkEditOrder() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('edit_order');
+        if (editId) {
+            try {
+                const res = await fetch(`/order/json/${editId}/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        editingOrderId = data.id;
+                        cart = data.items;
+                        // Change buttons to indicate update
+                        const btnPayOnly = document.querySelector('button[onclick="handleCheckout()"]');
+                        const btnPayPrint = document.querySelector('button[onclick="checkoutAndPrint()"]');
+                        if (btnPayOnly) btnPayOnly.textContent = "Update Order";
+                        if (btnPayPrint) btnPayPrint.innerHTML = "Update & Print 🖨️";
+                        
+                        updateCartDisplay();
+                        renderItems();
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load order for editing", err);
+            }
+        }
+    }
+
     // Initialize
     loadReceiptSettings();
     renderCategories();
     renderItems();
+    checkEditOrder();
 </script>
 {% endblock %}

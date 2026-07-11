@@ -866,3 +866,60 @@ class OrderJSONView(LoginRequiredMixin, View):
                 "totalWithTax": float(bills.get("totalWithTax", 0)),
             }
         })
+
+class OrderDeleteView(LoginRequiredMixin, View):
+    def delete(self, request, id):
+        try:
+            order = Order.objects.get(id=id)
+            # Free up table if needed
+            if order.table and order.table.currentOrder_id == order.id:
+                order.table.currentOrder = None
+                order.table.status = "Available"
+                order.table.save()
+            order.delete()
+            return JsonResponse({'success': True, 'message': 'Order deleted successfully'})
+        except Order.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Order not found'}, status=404)
+
+class OrderUpdateView(LoginRequiredMixin, View):
+    def post(self, request, id):
+        try:
+            order = Order.objects.get(id=id)
+            data = json.loads(request.body)
+            items = data.get('items', [])
+            table_id = data.get('table')
+            payment_method = data.get('paymentMethod', 'Cash')
+
+            if not items:
+                return JsonResponse({'success': False, 'message': 'Cart is empty'}, status=400)
+
+            # Recalculate totals
+            subtotal = sum(float(item['total']) for item in items)
+            tax = subtotal * 0.18
+            total_with_tax = subtotal + tax
+
+            order.items = items
+            order.bills = {
+                'total': subtotal,
+                'tax': tax,
+                'totalWithTax': total_with_tax
+            }
+            order.paymentMethod = payment_method
+
+            # Update Table mapping if changed
+            if table_id:
+                try:
+                    table = Table.objects.get(id=table_id)
+                    order.table = table
+                    table.status = "Occupied"
+                    table.currentOrder = order
+                    table.save()
+                except Table.DoesNotExist:
+                    pass
+
+            order.save()
+            return JsonResponse({'success': True, 'message': 'Order updated successfully'})
+        except Order.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Order not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)

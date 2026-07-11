@@ -5,7 +5,8 @@ from pos_api.views import (
     AuthTemplateView, AuthLoginView, AuthRegisterView, AuthLogoutView,
     SessionCustomerView, SessionCheckoutView, TableCreateAction,
     ItemCreateAction, ItemEditAction, ItemDeleteAction,
-    OrderReportView, OrderJSONView
+    OrderReportView, OrderJSONView,
+    OrderDeleteView, OrderUpdateView
 )
 
 urlpatterns = [
@@ -40,6 +41,10 @@ urlpatterns = [
 
     # Order JSON (for receipt printing)
     path('order/json/<int:id>/', OrderJSONView.as_view(), name='order_json'),
+    
+    # Order Edit / Delete
+    path('order/delete/<int:id>/', OrderDeleteView.as_view(), name='order_delete'),
+    path('order/update/<int:id>/', OrderUpdateView.as_view(), name='order_update'),
     
     # REST API endpoints (kept for backwards compatibility/mobile/testing)
     path('api/', include('pos_api.urls')),

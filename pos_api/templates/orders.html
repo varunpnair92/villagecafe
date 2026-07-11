@@ -124,10 +124,20 @@
                     <option value="Completed" {% if order.orderStatus == 'Completed' %}selected{% endif %}>🏁 Completed</option>
                     <option value="Cancelled" {% if order.orderStatus == 'Cancelled' %}selected{% endif %}>⚫ Cancelled</option>
                   </select>
+                  <a href="/menu/?edit_order={{ order.id }}" 
+                     title="Edit Order"
+                     class="bg-[#262626] hover:bg-brand-gold hover:text-black border border-[#2a2a2a] text-white px-2 py-1.5 rounded-lg text-xs transition">
+                     ✏️
+                  </a>
                   <button onclick="printOrderReceipt({{ order.id }})"
                     title="Print Receipt"
                     class="bg-[#262626] hover:bg-[#343434] border border-[#2a2a2a] text-white px-2 py-1.5 rounded-lg text-xs transition">
                     🖨️
+                  </button>
+                  <button onclick="deleteOrder({{ order.id }})"
+                    title="Delete Order"
+                    class="bg-[#262626] hover:bg-red-500 border border-[#2a2a2a] text-white px-2 py-1.5 rounded-lg text-xs transition">
+                    🗑️
                   </button>
                 </div>
               </td>
@@ -281,6 +291,32 @@
         } else {
             row.classList.add('hidden');
             icon.textContent = '▶';
+        }
+    }
+
+    // Delete Order
+    async function deleteOrder(id) {
+        if (!confirm(`Are you sure you want to completely delete Order #${id}? This cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/order/delete/${id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                showToastMsg('Order deleted successfully');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                alert(data.message || 'Error deleting order');
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Error deleting order. Please try again.');
         }
     }
 
