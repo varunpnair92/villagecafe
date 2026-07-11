@@ -425,6 +425,10 @@
                 </tr>`;
             });
 
+            const addressText = receiptSettings.address || '';
+            const phoneText = receiptSettings.phone || '';
+            const separator = (addressText && phoneText) ? ' | ' : '';
+
             const htmlContent = `<!DOCTYPE html>
 <html><head><title>Receipt - Order #${orderData.id}</title>
 <style>
@@ -443,17 +447,8 @@
 </style>
 </head><body>
 <h2>${receiptSettings.shop || 'RESTAURANT'}</h2>
-${receiptSettings.address ? `<p>${receiptSettings.address}</p>` : ''}
-${receiptSettings.phone ? `<p>Mob: ${receiptSettings.phone}</p>` : ''}
-<p style="font-size:10px;">${orderData.date}</p>
-<hr/>
-<p style="text-align:left;line-height:1.5;">
-  <strong>Order #${orderData.id}</strong><br/>
-  <strong>Cust:</strong> ${orderData.customer}<br/>
-  <strong>Phone:</strong> ${orderData.phone}<br/>
-  <strong>Table:</strong> ${orderData.table}<br/>
-  <strong>Payment:</strong> ${orderData.payment}
-</p>
+<p>${addressText}${separator}${phoneText}</p>
+<p style="font-size:10px; margin-top:2px;">Order #${orderData.id} | ${orderData.date}</p>
 <hr/>
 <table>
   <thead>

@@ -513,7 +513,8 @@
             if (data.success) {
                 if (shouldPrint) {
                     // Open receipt popup (non-blocking), then redirect
-                    printPOSReceipt();
+                    const printedOrderId = editingOrderId || data.id || 'NEW';
+                    printPOSReceipt(printedOrderId);
                     setTimeout(() => { window.location.href = '/orders/'; }, 300);
                 } else {
                     alert(editingOrderId ? 'Order updated successfully!' : 'Order placed successfully!');
@@ -528,7 +529,7 @@
         }
     }
 
-    function printPOSReceipt() {
+    function printPOSReceipt(orderId) {
         if (cart.length === 0) {
             alert('Cart is empty!');
             return;
@@ -539,9 +540,6 @@
 
         const width = localStorage.getItem('pos_receipt_width') || '80';
         const printMethod = localStorage.getItem('pos_print_method') || 'popup';
-        const custName = "{{ customer.name|default:'Guest' }}";
-        const custPhone = "{{ customer.phone|default:'N/A' }}";
-        const tableNo = "{{ customer.table_no|default:'N/A' }}";
         const now = new Date().toLocaleString();
 
         // Build totals
@@ -570,6 +568,10 @@
             setTimeout(() => { if (toast) toast.style.display = 'none'; }, 2000);
         }
 
+        const addressText = receiptSettings.address || '';
+        const phoneText = receiptSettings.phone || '';
+        const separator = (addressText && phoneText) ? ' | ' : '';
+
         const htmlContent = `<!DOCTYPE html>
 <html><head><title>Receipt</title>
 <style>
@@ -588,15 +590,8 @@
 </style>
 </head><body>
 <h2>${receiptSettings.shop || 'RESTAURANT'}</h2>
-${receiptSettings.address ? `<p>${receiptSettings.address}</p>` : ''}
-${receiptSettings.phone ? `<p>Mob: ${receiptSettings.phone}</p>` : ''}
-<p style="font-size:10px;">${now}</p>
-<hr/>
-<p style="text-align:left;line-height:1.5;">
-  <strong>Cust:</strong> ${custName}<br/>
-  <strong>Phone:</strong> ${custPhone}<br/>
-  <strong>Table:</strong> ${tableNo}
-</p>
+<p>${addressText}${separator}${phoneText}</p>
+<p style="font-size:10px; margin-top:2px;">Order #${orderId} | ${now}</p>
 <hr/>
 <table>
   <thead>

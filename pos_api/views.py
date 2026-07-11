@@ -654,7 +654,7 @@ class SessionCheckoutView(View):
             if 'customer' in request.session:
                 del request.session['customer']
 
-            return JsonResponse({"success": True})
+            return JsonResponse({"success": True, "id": order.id})
         except Exception as e:
             return JsonResponse({"success": False, "message": str(e)})
 
