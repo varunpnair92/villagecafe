@@ -136,12 +136,18 @@ REST_FRAMEWORK = {
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'http://13.61.176.252:3333',
+    'http://13.61.176.252',
+    'https://13.61.176.252',
 ]
+CORS_ALLOW_ALL_ORIGINS = True
 
-# CSRF settings (since we are not using Session authentication, DRF will skip CSRF, 
-# but we explicitly allow CSRF cookie sharing or trusted origins if needed)
+# CSRF settings
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
+    'http://13.61.176.252:3333',
+    'http://13.61.176.252',
+    'https://13.61.176.252',
 ]
 
 
