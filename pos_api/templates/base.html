@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#1f1f1f]">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}POS System{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            gold: '#F6B100',
+                            darkGold: '#b88500',
+                            bgDark: '#1f1f1f',
+                            cardDark: '#1a1a1a',
+                            buttonDark: '#262626',
+                            activeDark: '#343434',
+                            textGray: '#ababab',
+                            textLight: '#f5f5f5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #1f1f1f;
+            color: #f5f5f5;
+        }
+        /* Custom scrollbar hiding utilities */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full flex flex-col justify-between overflow-hidden">
+
+    <!-- Top Navigation Header (only visible if logged in) -->
+    {% if user.is_authenticated %}
+    <header class="bg-[#1a1a1a] h-16 flex items-center justify-between px-8 border-b border-[#2a2a2a] shrink-0">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🍽️</span>
+            <h1 class="text-xl font-bold tracking-wider text-white">POS SYSTEM</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-brand-textGray text-sm">Hello, <strong class="text-white">{{ user.name }}</strong> ({{ user.role }})</span>
+            <form action="/auth/logout/" method="POST" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="bg-red-950/40 text-red-500 hover:bg-red-900/40 border border-red-900 px-3 py-1.5 rounded-lg text-sm font-semibold transition">
+                    Logout
+                </button>
+            </form>
+        </div>
+    </header>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-hidden">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bottom Navigation Bar (only visible if logged in) -->
+    {% if user.is_authenticated %}
+    <footer class="bg-[#262626] h-16 flex justify-around items-center shrink-0 relative border-t border-[#343434]">
+        <a href="/" class="flex items-center justify-center font-bold px-4 py-2 w-[25%] max-w-[250px] rounded-[20px] transition {% if request.path == '/' %}text-white bg-[#343434]{% else %}text-brand-textGray hover:text-white{% endif %}">
+            <span class="mr-2">🏠</span> Home
+        </a>
+        <a href="/orders/" class="flex items-center justify-center font-bold px-4 py-2 w-[25%] max-w-[250px] rounded-[20px] transition {% if request.path == '/orders/' %}text-white bg-[#343434]{% else %}text-brand-textGray hover:text-white{% endif %}">
+            <span class="mr-2">📋</span> Orders
+        </a>
+        <a href="/tables/" class="flex items-center justify-center font-bold px-4 py-2 w-[25%] max-w-[250px] rounded-[20px] transition {% if request.path == '/tables/' %}text-white bg-[#343434]{% else %}text-brand-textGray hover:text-white{% endif %}">
+            <span class="mr-2">🪑</span> Tables
+        </a>
+        <a href="/dashboard/" class="flex items-center justify-center font-bold px-4 py-2 w-[25%] max-w-[250px] rounded-[20px] transition {% if request.path == '/dashboard/' %}text-white bg-[#343434]{% else %}text-brand-textGray hover:text-white{% endif %}">
+            <span class="mr-2">📊</span> Admin
+        </a>
+
+        <!-- Floating Action Dish Button -->
+        <button id="floating-dish-btn" 
+                class="absolute bottom-6 bg-brand-gold hover:bg-brand-darkGold text-white rounded-full p-4 shadow-lg border-4 border-[#1f1f1f] transition transform hover:scale-105 duration-200"
+                {% if request.path == '/tables/' or request.path == '/menu/' %}disabled style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+            <span class="text-3xl block leading-none">🍲</span>
+        </button>
+    </footer>
+
+    <!-- Order Creation Modal -->
+    <div id="create-order-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-[#1a1a1a] border border-[#2a2a2a] w-full max-w-md rounded-xl p-6 shadow-2xl relative">
+            <button id="close-modal-btn" class="absolute top-4 right-4 text-brand-textGray hover:text-white text-xl">&times;</button>
+            <h2 class="text-xl font-bold mb-4 text-white">Create Order</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-brand-textGray mb-2 text-sm font-medium">Customer Name</label>
+                    <input id="modal-cust-name" type="text" placeholder="Enter customer name" class="w-full bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg p-3 text-white focus:outline-none focus:border-brand-gold">
+                </div>
+                <div>
+                    <label class="block text-brand-textGray mb-2 text-sm font-medium">Customer Phone</label>
+                    <input id="modal-cust-phone" type="text" placeholder="Enter 10-digit phone" class="w-full bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg p-3 text-white focus:outline-none focus:border-brand-gold">
+                </div>
+                <div>
+                    <label class="block text-brand-textGray mb-2 text-sm font-medium">Guests</label>
+                    <div class="flex items-center justify-between bg-[#1f1f1f] border border-[#2a2a2a] px-4 py-3 rounded-lg">
+                        <button id="guest-dec" class="text-brand-gold text-2xl font-bold leading-none px-2">&minus;</button>
+                        <span id="guest-display" class="text-white font-semibold">1 Person</span>
+                        <button id="guest-inc" class="text-brand-gold text-2xl font-bold leading-none px-2">&#43;</button>
+                    </div>
+                </div>
+                
+                <button id="modal-submit-btn" class="w-full bg-brand-gold hover:bg-brand-darkGold text-white font-bold rounded-lg py-3 mt-4 transition">
+                    Select Table
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal and Fetch Logic -->
+    <script>
+        const dishBtn = document.getElementById('floating-dish-btn');
+        const modal = document.getElementById('create-order-modal');
+        const closeBtn = document.getElementById('close-modal-btn');
+        const guestDec = document.getElementById('guest-dec');
+        const guestInc = document.getElementById('guest-inc');
+        const guestDisplay = document.getElementById('guest-display');
+        const submitBtn = document.getElementById('modal-submit-btn');
+
+        let guestCount = 1;
+
+        if (dishBtn) {
+            dishBtn.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        }
+
+        if (guestDec) {
+            guestDec.addEventListener('click', () => {
+                if (guestCount > 1) {
+                    guestCount--;
+                    guestDisplay.textContent = `${guestCount} Person${guestCount > 1 ? 's' : ''}`;
+                }
+            });
+        }
+
+        if (guestInc) {
+            guestInc.addEventListener('click', () => {
+                if (guestCount < 6) {
+                    guestCount++;
+                    guestDisplay.textContent = `${guestCount} Persons`;
+                }
+            });
+        }
+
+        if (submitBtn) {
+            submitBtn.addEventListener('click', async () => {
+                let name = document.getElementById('modal-cust-name').value.trim();
+                let phone = document.getElementById('modal-cust-phone').value.trim();
+
+                if (!name) {
+                    name = "Guest";
+                }
+
+                if (!phone) {
+                    phone = "0000000000";
+                } else if (!/^\d{10}$/.test(phone)) {
+                    alert('Phone number must be a 10-digit number if provided!');
+                    return;
+                }
+
+                // Send customer data to Django session
+                try {
+                    const response = await fetch('/session/customer/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ name, phone, guests: guestCount })
+                    });
+                    const resData = await response.json();
+                    if (resData.success) {
+                        window.location.href = '/tables/';
+                    } else {
+                        alert(resData.message || 'Error creating order session.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Network error, please try again.');
+                }
+            });
+        }
+    </script>
+    {% endif %}
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

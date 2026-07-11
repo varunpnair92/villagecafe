@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+
+{% block title %}POS | Menu{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Normal: receipt invisible */
+    #pos-receipt-print { display: none; }
+
+    @media print {
+        /* Hide all page content during printing */
+        body > * { display: none !important; }
+        /* Show only the POS print container */
+        #pos-receipt-print {
+            display: block !important;
+            position: fixed;
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding: 3mm 4mm;
+            width: var(--receipt-width, 80mm);
+            background-color: white;
+            color: black;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        @page {
+            size: var(--receipt-width, 80mm) auto;
+            margin: 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="h-[calc(100vh-8rem)] overflow-hidden flex gap-3 p-4">
+  <!-- Left Div (Menu & Selection) -->
+  <div class="flex-[3] flex flex-col h-full overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-3 shrink-0 border-b border-[#2a2a2a]">
+      <div class="flex items-center gap-4">
+        <a href="/tables/" class="bg-[#262626] hover:bg-[#343434] text-white px-4 py-2 rounded-lg font-bold text-sm">
+          &larr; Tables
+        </a>
+        <h1 class="text-white text-2xl font-bold tracking-wider">Menu</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-3xl leading-none">📖</span>
+        <div class="flex flex-col">
+          <h3 id="cust-name-header" class="text-white font-bold leading-tight">{{ customer.name|default:"Customer Name" }}</h3>
+          <span class="text-brand-textGray text-xs font-semibold">Table: {{ customer.table_no|default:"N/A" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Tabs -->
+    <div id="category-tabs" class="grid grid-cols-4 sm:grid-cols-8 gap-3 px-6 py-4 shrink-0 border-b border-[#2a2a2a]/60">
+      <!-- Generated dynamically in javascript -->
+    </div>
+
+    <!-- Items Grid -->
+    <div class="flex-1 overflow-y-auto p-6 scrollbar-hide">
+      <div id="items-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <!-- Generated dynamically in javascript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Div (Cart Sidebar) -->
+  <div class="flex-[1.2] bg-[#1a1a1a] border border-[#2a2a2a] h-full rounded-xl flex flex-col overflow-hidden">
+    <!-- Customer Details Card -->
+    <div class="p-5 border-b border-[#2a2a2a] shrink-0">
+      <h3 class="text-white text-base font-bold mb-3 tracking-wide flex items-center gap-2">
+        <span>👤</span> Customer Info
+      </h3>
+      <div class="grid grid-cols-2 gap-y-2 text-sm">
+        <span class="text-brand-textGray">Name:</span>
+        <strong class="text-white text-right truncate">{{ customer.name|default:"N/A" }}</strong>
+        
+        <span class="text-brand-textGray">Phone:</span>
+        <span class="text-white text-right font-medium">{{ customer.phone|default:"N/A" }}</span>
+        
+        <span class="text-brand-textGray">Guests:</span>
+        <span class="text-white text-right font-medium">{{ customer.guests|default:"0" }} Person(s)</span>
+      </div>
+    </div>
+
+    <!-- Cart items list -->
+    <div class="flex-1 overflow-y-auto p-5 scrollbar-hide flex flex-col justify-start">
+      <h3 class="text-white text-base font-bold mb-3 tracking-wide flex items-center gap-2 shrink-0">
+        <span>🛒</span> Cart List
+      </h3>
+      <div id="cart-list" class="space-y-3">
+        <!-- Cart Items generated dynamically in javascript -->
+        <p id="empty-cart-msg" class="text-brand-textGray text-sm text-center py-10">Cart is empty</p>
+      </div>
+    </div>
+
+    <!-- Billing calculations and Payment -->
+    <div class="p-5 border-t border-[#2a2a2a] bg-[#1d1d1d] shrink-0 space-y-4">
+      <div class="space-y-2 text-sm border-b border-[#2a2a2a]/60 pb-3">
+        <div class="flex justify-between">
+          <span class="text-brand-textGray">Subtotal:</span>
+          <span id="bill-subtotal" class="text-white font-semibold">₹0.00</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-brand-textGray">CGST & SGST (18%):</span>
+          <span id="bill-tax" class="text-white font-semibold">₹0.00</span>
+        </div>
+        <div class="flex justify-between text-base font-bold">
+          <span class="text-brand-gold">Total Amount:</span>
+          <span id="bill-total" class="text-white">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Payment Method -->
+      <div>
+        <label class="block text-brand-textGray text-xs font-semibold uppercase tracking-wider mb-2">Payment Method</label>
+        <select id="payment-method" class="w-full bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg p-2.5 text-white focus:outline-none text-sm font-semibold">
+          <option value="Cash">💵 Cash</option>
+          <option value="Online">💳 Online (Razorpay)</option>
+          <option value="Card">💳 Card</option>
+        </select>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="handleCheckout()" id="pay-btn" class="flex-1 bg-brand-gold hover:bg-brand-darkGold text-white font-bold rounded-lg py-3 tracking-wider text-base transition">
+          Pay & Place Order
+        </button>
+        <button onclick="checkoutAndPrint()" class="bg-[#262626] hover:bg-[#343434] border border-[#2a2a2a] text-white px-4 py-3 rounded-lg leading-none transition" title="Checkout and Print POS Bill">
+          🖨️
+        </button>
+      </div>
+      <div class="flex items-center justify-between mt-2 pt-1 border-t border-[#2a2a2a]/40">
+        <label class="text-brand-textGray text-xs font-semibold uppercase tracking-wider">POS Width:</label>
+        <select id="pos-width-select" onchange="localStorage.setItem('pos_receipt_width', this.value)"
+          class="bg-[#1f1f1f] border border-[#2a2a2a] rounded p-1 text-white text-xs font-bold focus:outline-none">
+          <option value="58">58mm (2 inch)</option>
+          <option value="80" selected>80mm (3 inch)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Hidden POS Receipt Container for Printing -->
+<div id="pos-receipt-print" style="display:none;">
+    <div style="text-align: center; margin-bottom: 5mm;">
+        <h2 id="receipt-shop-name" style="margin: 0; font-size: 16px; font-weight: bold; text-transform: uppercase;"></h2>
+        <p id="receipt-shop-address" style="margin: 2px 0; font-size: 11px;"></p>
+        <p id="receipt-shop-phone" style="margin: 2px 0; font-size: 11px;"></p>
+        <p id="receipt-date-time" style="margin: 2px 0; font-size: 10px;"></p>
+        <hr style="border-top: 1px dashed black; margin: 5px 0;" />
+        <p id="receipt-cust-info" style="margin: 2px 0; font-size: 11px; text-align: left; line-height: 1.3;"></p>
+        <hr style="border-top: 1px dashed black; margin: 5px 0;" />
+    </div>
+    <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 1px dashed black;">
+                <th style="text-align: left; padding: 2px 0;">Item</th>
+                <th style="text-align: center; padding: 2px 0;">Qty</th>
+                <th style="text-align: right; padding: 2px 0;">Price</th>
+                <th style="text-align: right; padding: 2px 0;">Total</th>
+            </tr>
+        </thead>
+        <tbody id="receipt-items-body">
+            <!-- Items injected dynamically -->
+        </tbody>
+    </table>
+    <hr style="border-top: 1px dashed black; margin: 5px 0;" />
+    <div style="font-size: 11px; line-height: 1.4;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed black; padding-bottom: 3px; margin-bottom: 3px;">
+            <span>Total Items:</span>
+            <span id="receipt-total-items" style="font-weight: bold;"></span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Subtotal:</span>
+            <span id="receipt-subtotal"></span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>CGST & SGST (18%):</span>
+            <span id="receipt-tax"></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; margin-top: 2px;">
+            <span>TOTAL AMOUNT:</span>
+            <span id="receipt-total"></span>
+        </div>
+    </div>
+    <hr style="border-top: 1px dashed black; margin: 5px 0;" />
+    <div style="text-align: center; font-size: 10px; margin-top: 5mm;">
+        Thank you for visiting!
+        <br />Have a great day!
+    </div>
+</div>
+
+<!-- Printer Reminder Toast -->
+<div id="print-reminder-toast" style="display:none;"
+  class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center">
+  <div class="bg-[#1f1f1f] border border-brand-gold/40 rounded-2xl p-8 text-center shadow-2xl max-w-sm mx-4">
+    <div class="text-4xl mb-3">🖨️</div>
+    <h3 class="text-white font-bold text-lg mb-2">Opening Print Dialog</h3>
+    <p class="text-brand-textGray text-sm mb-1">Please select this printer:</p>
+    <p id="toast-printer-name" class="text-brand-gold font-black text-xl tracking-wide">BillQuick Elite</p>
+    <p class="text-brand-textGray text-xs mt-3">The print dialog will open automatically…</p>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Razorpay Checkout SDK -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+    // Injected menu constants
+    const menuData = {{ menus_json|safe }};
+    
+    let activeCategory = menuData[0];
+    let quantities = {}; // store item count per item_id dynamically: {item_id: quantity}
+    let cart = []; // store selected items: [{id, name, price, quantity, total}]
+
+    // Render category selectors
+    function renderCategories() {
+        const container = document.getElementById('category-tabs');
+        container.innerHTML = '';
+        
+        menuData.forEach(cat => {
+            const isSelected = cat.id === activeCategory.id;
+            const tab = document.createElement('button');
+            tab.className = `flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer transition text-center shrink-0 border
+              ${isSelected ? 'bg-brand-gold/20 border-brand-gold text-white' : 'bg-[#262626] border-[#343434] text-brand-textGray hover:text-white'}`;
+            tab.innerHTML = `
+                <span class="text-xl leading-none">${cat.icon}</span>
+                <span class="text-xs font-bold mt-1 tracking-wide truncate max-w-[80px]">${cat.name}</span>
+            `;
+            tab.addEventListener('click', () => {
+                activeCategory = cat;
+                renderCategories();
+                renderItems();
+            });
+            container.appendChild(tab);
+        });
+    }
+
+    // Render items grid
+    function renderItems() {
+        const container = document.getElementById('items-grid');
+        container.innerHTML = '';
+        
+        activeCategory.items.forEach(item => {
+            const cartItem = cart.find(c => c.id === item.id);
+            const itemQty = cartItem ? cartItem.quantity : 0;
+            const card = document.createElement('div');
+            card.className = "flex flex-col justify-between p-4 rounded-xl hover:bg-[#2c2c2c] bg-[#262626] border border-[#343434] transition duration-200 h-[140px]";
+            
+            const escapedName = item.name.replace(/'/g, "\\'");
+            
+            card.innerHTML = `
+                <div class="flex items-start justify-between w-full">
+                    <h3 class="text-white text-base font-bold tracking-wide truncate max-w-[150px]" title="${item.name}">${item.name}</h3>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                    <p class="text-brand-gold text-lg font-black">₹${item.price}</p>
+                    <div class="flex items-center justify-between bg-[#1f1f1f] border border-[#2a2a2a] p-1 rounded-lg w-[110px] select-none">
+                        <button onclick="decrementQty(${item.id})" class="text-brand-gold text-xl font-bold leading-none px-2">&minus;</button>
+                        <span class="text-white text-sm font-semibold">${itemQty}</span>
+                        <button onclick="incrementQty(${item.id}, '${escapedName}', ${item.price})" class="text-brand-gold text-xl font-bold leading-none px-2">&#43;</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Direct plus / minus cart updates
+    function incrementQty(itemId, name, price) {
+        const existingIdx = cart.findIndex(c => c.id === itemId);
+        if (existingIdx !== -1) {
+            cart[existingIdx].quantity += 1;
+            cart[existingIdx].total = cart[existingIdx].quantity * price;
+        } else {
+            cart.push({
+                id: itemId,
+                name: name,
+                price: price,
+                quantity: 1,
+                total: price
+            });
+        }
+        updateCartDisplay();
+        renderItems();
+    }
+
+    function decrementQty(itemId) {
+        const existingIdx = cart.findIndex(c => c.id === itemId);
+        if (existingIdx !== -1) {
+            if (cart[existingIdx].quantity > 1) {
+                cart[existingIdx].quantity -= 1;
+                cart[existingIdx].total = cart[existingIdx].quantity * cart[existingIdx].price;
+            } else {
+                cart.splice(existingIdx, 1);
+            }
+        }
+        updateCartDisplay();
+        renderItems();
+    }
+
+    function removeFromCart(itemId) {
+        cart = cart.filter(c => c.id !== itemId);
+        updateCartDisplay();
+        renderItems();
+    }
+
+    function updateCartDisplay() {
+        const container = document.getElementById('cart-list');
+        const emptyMsg = document.getElementById('empty-cart-msg');
+        
+        // Remove old items
+        const oldItems = container.querySelectorAll('.cart-list-item');
+        oldItems.forEach(el => el.remove());
+
+        if (cart.length === 0) {
+            emptyMsg.classList.remove('hidden');
+            document.getElementById('bill-subtotal').textContent = '₹0.00';
+            document.getElementById('bill-tax').textContent = '₹0.00';
+            document.getElementById('bill-total').textContent = '₹0.00';
+            return;
+        }
+
+        emptyMsg.classList.add('hidden');
+        
+        let subtotal = 0;
+        
+        cart.forEach(item => {
+            subtotal += item.total;
+            const itemRow = document.createElement('div');
+            itemRow.className = "cart-list-item flex items-center justify-between p-3 bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg";
+            itemRow.innerHTML = `
+                <div>
+                    <h4 class="text-white text-sm font-bold truncate max-w-[120px]">${item.name}</h4>
+                    <span class="text-brand-textGray text-xs">₹${item.price} x ${item.quantity}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <strong class="text-white text-sm">₹${item.total}</strong>
+                    <button onclick="removeFromCart(${item.id})" class="text-red-500 hover:text-red-400 font-bold text-sm">🗑️</button>
+                </div>
+            `;
+            container.appendChild(itemRow);
+        });
+
+        const tax = subtotal * 0.18;
+        const total = subtotal + tax;
+
+        document.getElementById('bill-subtotal').textContent = `₹${subtotal.toFixed(2)}`;
+        document.getElementById('bill-tax').textContent = `₹${tax.toFixed(2)}`;
+        document.getElementById('bill-total').textContent = `₹${total.toFixed(2)}`;
+    }
+
+    // Checkout processing
+    async function handleCheckout() {
+        if (cart.length === 0) {
+            alert('Your cart is empty!');
+            return;
+        }
+
+        const pMethod = document.getElementById('payment-method').value;
+        const subtotal = cart.reduce((acc, item) => acc + item.total, 0);
+        const tax = subtotal * 0.18;
+        const total = subtotal + tax;
+
+        const checkoutData = {
+            customerDetails: {
+                name: '{{ customer.name }}',
+                phone: '{{ customer.phone }}',
+                guests: parseInt('{{ customer.guests|default:1 }}')
+            },
+            orderStatus: 'Pending',
+            bills: {
+                total: subtotal,
+                tax: tax,
+                totalWithTax: total
+            },
+            items: cart.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                total: item.total
+            })),
+            table: '{{ customer.table_id }}',
+            paymentMethod: pMethod
+        };
+
+        if (pMethod === 'Online') {
+            // Trigger Razorpay payment gateway order creation view
+            try {
+                const orderResponse = await fetch('/api/payment/create-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ amount: total })
+                });
+                const orderData = await orderResponse.json();
+                
+                if (!orderData.success) {
+                    alert(orderData.message || 'Razorpay order creation failed, fallback to cash!');
+                    return;
+                }
+
+                // Launch Razorpay Checkout
+                const options = {
+                    key: orderData.order.key_id || 'rzp_test_placeholder', // placeholder if not config
+                    amount: orderData.order.amount,
+                    currency: orderData.order.currency,
+                    name: 'Restro POS System',
+                    description: 'Order Payment',
+                    order_id: orderData.order.id,
+                    handler: async function (response) {
+                        // On successful payment, verify signature and checkout
+                        checkoutData.paymentData = {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature
+                        };
+                        checkoutData.orderStatus = 'Preparing'; // Set preparing immediately since paid
+                        await submitOrder(checkoutData);
+                    },
+                    prefill: {
+                        name: '{{ customer.name }}',
+                        contact: '{{ customer.phone }}'
+                    },
+                    theme: {
+                        color: '#F6B100'
+                    }
+                };
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } catch (error) {
+                console.error(error);
+                alert('Payment gateway error. Placing order as Pending instead.');
+                await submitOrder(checkoutData);
+            }
+        } else {
+            // Cash / Card directly submit
+            await submitOrder(checkoutData);
+        }
+    }
+
+    let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210' };
+
+    function loadReceiptSettings() {
+        const settingsRaw = localStorage.getItem('pos_receipt_settings');
+        if (settingsRaw) {
+            try {
+                receiptSettings = JSON.parse(settingsRaw);
+            } catch(e) {
+                console.error(e);
+            }
+        }
+    }
+
+    async function checkoutAndPrint() {
+        if (cart.length === 0) {
+            alert('Your cart is empty!');
+            return;
+        }
+
+        const pMethod = document.getElementById('payment-method').value;
+        const subtotal = cart.reduce((acc, item) => acc + item.total, 0);
+        const tax = subtotal * 0.18;
+        const total = subtotal + tax;
+
+        const checkoutData = {
+            customerDetails: {
+                name: '{{ customer.name }}',
+                phone: '{{ customer.phone }}',
+                guests: parseInt('{{ customer.guests|default:1 }}')
+            },
+            orderStatus: 'Completed', // Automatically mark completed when printing bill
+            bills: {
+                total: subtotal,
+                tax: tax,
+                totalWithTax: total
+            },
+            items: cart.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                total: item.total
+            })),
+            table: '{{ customer.table_id }}',
+            paymentMethod: pMethod
+        };
+
+        await submitOrder(checkoutData, true);
+    }
+
+    async function submitOrder(orderPayload, shouldPrint = false) {
+        try {
+            const response = await fetch('/session/checkout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(orderPayload)
+            });
+            const data = await response.json();
+            if (data.success) {
+                if (shouldPrint) {
+                    // Print first, then redirect AFTER print dialog is dismissed
+                    printPOSReceipt();
+                    window.addEventListener('afterprint', function onAfterPrint() {
+                        window.removeEventListener('afterprint', onAfterPrint);
+                        window.location.href = '/orders/';
+                    });
+                } else {
+                    alert('Order placed successfully!');
+                    window.location.href = '/orders/';
+                }
+            } else {
+                alert(data.message || 'Failed to place order.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error submitting order details.');
+        }
+    }
+
+    function printPOSReceipt() {
+        if (cart.length === 0) {
+            alert('Cart is empty!');
+            return;
+        }
+
+        // Load heading setup from localized storage object
+        const shopName = receiptSettings.shop || 'VILLAGE CAFE';
+        const shopAddress = receiptSettings.address || '';
+        const shopPhone = receiptSettings.phone || '';
+
+        document.getElementById('receipt-shop-name').textContent = shopName;
+        document.getElementById('receipt-shop-address').textContent = shopAddress;
+        document.getElementById('receipt-shop-phone').textContent = shopPhone ? 'Mob: ' + shopPhone : '';
+
+        // Set current date/time in receipt
+        const now = new Date();
+        document.getElementById('receipt-date-time').textContent = now.toLocaleString();
+
+        // Set customer / table info
+        const custName = "{{ customer.name }}";
+        const custPhone = "{{ customer.phone }}";
+        const tableNo = "{{ customer.table_no|default:'N/A' }}";
+        document.getElementById('receipt-cust-info').innerHTML = `
+            <strong>Cust:</strong> ${custName || 'Guest'}<br/>
+            <strong>Phone:</strong> ${custPhone || 'N/A'}<br/>
+            <strong>Table:</strong> ${tableNo}
+        `;
+
+        // Populate items table
+        const tbody = document.getElementById('receipt-items-body');
+        tbody.innerHTML = '';
+
+        let subtotal = 0;
+        let totalItems = 0;
+        cart.forEach(item => {
+            subtotal += item.total;
+            totalItems += item.quantity;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="padding: 3px 0; text-align: left;">${item.name}</td>
+                <td style="text-align: center; padding: 3px 0;">${item.quantity}</td>
+                <td style="text-align: right; padding: 3px 0;">₹${item.price.toFixed(2)}</td>
+                <td style="text-align: right; padding: 3px 0;">₹${item.total.toFixed(2)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        const tax = subtotal * 0.18;
+        const total = subtotal + tax;
+
+        document.getElementById('receipt-total-items').textContent = totalItems;
+        document.getElementById('receipt-subtotal').textContent = `₹${subtotal.toFixed(2)}`;
+        document.getElementById('receipt-tax').textContent = `₹${tax.toFixed(2)}`;
+        document.getElementById('receipt-total').textContent = `₹${total.toFixed(2)}`;
+
+        // Get chosen width: 58mm or 80mm
+        const widthSelected = localStorage.getItem('pos_receipt_width') || document.getElementById('pos-width-select').value || '80';
+
+        // Sync the dropdown to saved value
+        const widthSelect = document.getElementById('pos-width-select');
+        if (widthSelect) widthSelect.value = widthSelected;
+
+        // Apply width styles to printable receipt container
+        const printContainer = document.getElementById('pos-receipt-print');
+        printContainer.style.width = widthSelected + 'mm';
+        document.documentElement.style.setProperty('--receipt-width', widthSelected + 'mm');
+
+        // Show receipt before printing (display:none blocks print)
+        printContainer.style.display = 'block';
+
+        // Show printer reminder toast if printer name is saved
+        const printerName = localStorage.getItem('pos_printer_name') || '';
+        const toast = document.getElementById('print-reminder-toast');
+        const toastNameEl = document.getElementById('toast-printer-name');
+        if (toast && printerName) {
+            if (toastNameEl) toastNameEl.textContent = printerName;
+            toast.style.display = 'flex';
+            setTimeout(() => {
+                toast.style.display = 'none';
+                window.print();
+            }, 1500);
+        } else {
+            window.print();
+        }
+
+        window.addEventListener('afterprint', function onPrinted() {
+            window.removeEventListener('afterprint', onPrinted);
+            printContainer.style.display = 'none';
+            if (toast) toast.style.display = 'none';
+        });
+    }
+
+    // Initialize
+    loadReceiptSettings();
+    renderCategories();
+    renderItems();
+</script>
+{% endblock %}

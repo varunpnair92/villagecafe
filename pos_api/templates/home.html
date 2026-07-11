@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}POS | Home{% endblock %}
+
+{% block content %}
+<section class="h-[calc(100vh-8rem)] overflow-hidden flex gap-3 p-4">
+  <!-- Left Div (Greetings, Cards, Recent Orders) -->
+  <div class="flex-[3] flex flex-col h-full overflow-hidden">
+    
+    <!-- Greetings -->
+    <div class="flex justify-between items-center px-4 mt-2 shrink-0">
+      <div>
+        <h1 class="text-white text-2xl font-bold tracking-wide">
+          Good Morning, {{ user.name }}
+        </h1>
+        <p class="text-brand-textGray text-sm">
+          Give your best services for customers 😀
+        </p>
+      </div>
+      <div class="text-right">
+        <h1 id="live-time" class="text-white text-3xl font-black tracking-wider min-w-[150px]">00:00:00</h1>
+        <p id="live-date" class="text-brand-textGray text-sm">Loading Date...</p>
+      </div>
+    </div>
+
+    <!-- Mini Cards -->
+    <div class="flex items-center w-full gap-4 px-4 mt-6 shrink-0">
+      <!-- Total Earnings -->
+      <div class="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] p-5 rounded-xl flex items-center justify-between">
+        <div>
+          <p class="text-brand-textGray text-xs font-semibold uppercase tracking-wider">Total Earnings</p>
+          <h2 class="text-white text-3xl font-extrabold mt-1">₹{{ total_earnings|floatformat:2 }}</h2>
+        </div>
+        <div class="bg-green-950/50 text-green-500 border border-green-900/50 text-3xl rounded-xl p-3 leading-none">
+          💵
+        </div>
+      </div>
+      <!-- In Progress Orders -->
+      <div class="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] p-5 rounded-xl flex items-center justify-between">
+        <div>
+          <p class="text-brand-textGray text-xs font-semibold uppercase tracking-wider">In Progress</p>
+          <h2 class="text-white text-3xl font-extrabold mt-1">{{ in_progress_count }}</h2>
+        </div>
+        <div class="bg-yellow-950/50 text-brand-gold border border-yellow-900/50 text-3xl rounded-xl p-3 leading-none">
+          🔄
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Orders List -->
+    <div class="px-4 mt-6 flex-1 flex flex-col min-h-0">
+      <div class="bg-[#1a1a1a] border border-[#2a2a2a] w-full h-full rounded-xl flex flex-col overflow-hidden">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b border-[#2a2a2a] shrink-0">
+          <h3 class="text-white text-lg font-bold tracking-wide">
+            Recent Orders
+          </h3>
+          <a href="/orders/" class="text-brand-gold hover:text-brand-darkGold text-sm font-semibold">
+            View all
+          </a>
+        </div>
+
+        <!-- Search -->
+        <div class="flex items-center gap-4 bg-[#1f1f1f] border border-[#2a2a2a] rounded-xl px-4 py-2.5 mx-6 mt-4 shrink-0">
+          <span class="text-brand-textGray text-lg">🔍</span>
+          <input
+            id="order-search"
+            type="text"
+            placeholder="Search recent orders by customer..."
+            class="bg-transparent outline-none text-white w-full text-sm"
+          />
+        </div>
+
+        <!-- Scrollable list -->
+        <div id="orders-container" class="mt-4 px-6 pb-4 overflow-y-auto flex-1 scrollbar-hide space-y-3">
+          {% if orders %}
+            {% for order in orders %}
+            <div class="order-item flex items-center justify-between p-4 bg-[#1f1f1f] hover:bg-[#262626] border border-[#2a2a2a]/60 rounded-xl transition duration-200" 
+                 data-customer="{{ order.customerDetails.name|lower }}">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-brand-gold/10 text-brand-gold border border-brand-gold/20 flex items-center justify-center rounded-full font-black text-lg">
+                  {{ order.customerDetails.name|slice:":2"|upper }}
+                </div>
+                <div>
+                  <h4 class="text-white font-bold text-base tracking-wide">{{ order.customerDetails.name }}</h4>
+                  <p class="text-brand-textGray text-xs mt-0.5">Table {{ order.table.tableNo }} &bull; {{ order.orderDate|date:"M d, Y h:i A" }}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-white font-black block text-base">₹{{ order.bills.totalWithTax|floatformat:2 }}</span>
+                <span class="inline-block px-2.5 py-0.5 mt-1 rounded-full text-xs font-semibold uppercase tracking-wider
+                  {% if order.orderStatus == 'Pending' %}bg-red-950/40 text-red-400 border border-red-900/40
+                  {% elif order.orderStatus == 'Preparing' %}bg-yellow-950/40 text-brand-gold border border-yellow-900/40
+                  {% else %}bg-green-950/40 text-green-400 border border-green-900/40{% endif %}">
+                  {{ order.orderStatus }}
+                </span>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center py-10">
+              <span class="text-4xl">📭</span>
+              <p class="text-brand-textGray text-sm mt-2">No orders available</p>
+            </div>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Div (Popular Dishes Sidebar) -->
+  <div class="flex-[2] h-full overflow-hidden flex flex-col">
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] w-full h-full rounded-xl flex flex-col overflow-hidden">
+      <!-- Header -->
+      <div class="flex justify-between items-center px-6 py-4 border-b border-[#2a2a2a] shrink-0">
+        <h3 class="text-white text-lg font-bold tracking-wide">
+          Popular Dishes
+        </h3>
+        <span class="text-brand-textGray text-xs font-semibold">Total Orders</span>
+      </div>
+
+      <!-- Scrollable Dishes -->
+      <div class="overflow-y-auto p-4 flex-1 scrollbar-hide space-y-3">
+        {% for dish in popular_dishes %}
+        <div class="flex items-center justify-between bg-[#1f1f1f] border border-[#2a2a2a]/60 rounded-xl px-5 py-4 hover:bg-[#262626] transition">
+          <div class="flex items-center gap-4">
+            <span class="text-2xl font-black text-brand-textGray mr-2">{{ forloop.counter|stringformat:"02d" }}</span>
+            <span class="text-3xl leading-none">
+              {% if dish.name == 'Butter Chicken' or dish.name == 'Rogan Josh' or dish.name == 'Chicken Biryani' or dish.name == 'Chicken Tikka' or dish.name == 'Tandoori Chicken' %}🍛
+              {% elif dish.name == 'Gulab Jamun' or dish.name == 'Ras Malai' or dish.name == 'Chocolate Lava Cake' %}🍰
+              {% elif dish.name == 'Masala Dosa' or dish.name == 'Samosa' %}🍲
+              {% elif dish.name == 'Paneer Tikka' or dish.name == 'Palak Paneer' or dish.name == 'Paneer Butter Masala' %}🧀
+              {% else %}🥗{% endif %}
+            </span>
+            <div>
+              <h4 class="text-white font-bold text-sm tracking-wide">{{ dish.name }}</h4>
+              <p class="text-brand-textGray text-xs mt-0.5">Rating &bull; ⭐⭐⭐⭐⭐</p>
+            </div>
+          </div>
+          <div class="bg-[#262626] border border-[#343434] text-white font-bold text-xs rounded-full px-3 py-1">
+            {{ dish.orders }} orders
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Live Clock & Date
+    function updateClock() {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        document.getElementById('live-time').textContent = `${hrs}:${mins}:${secs}`;
+        
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const formattedDate = `${months[now.getMonth()]} ${String(now.getDate()).padStart(2, '0')}, ${now.getFullYear()}`;
+        document.getElementById('live-date').textContent = formattedDate;
+    }
+    
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Live Recent Orders Search Filter
+    const searchInput = document.getElementById('order-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            const items = document.querySelectorAll('.order-item');
+            items.forEach(item => {
+                const customer = item.getAttribute('data-customer');
+                if (customer.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    }
+</script>
+{% endblock %}

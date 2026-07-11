@@ -1,0 +1,925 @@
+{% extends "base.html" %}
+
+{% block title %}POS | Admin Dashboard{% endblock %}
+
+{% block content %}
+<section class="h-[calc(100vh-8rem)] overflow-hidden flex flex-col p-4">
+  <!-- Top Tab Headers & Admin Triggers -->
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 shrink-0 border-b border-[#2a2a2a]">
+    <!-- Actions -->
+    <div class="flex items-center gap-3">
+      <button onclick="openTableModal()" class="bg-[#1a1a1a] hover:bg-[#262626] border border-[#2a2a2a] px-5 py-2.5 rounded-lg text-white font-semibold text-sm flex items-center gap-2 transition">
+        🪑 Add Table
+      </button>
+      <button onclick="alert('Add Category feature is handled by database loaders.')" class="bg-[#1a1a1a] hover:bg-[#262626] border border-[#2a2a2a] px-5 py-2.5 rounded-lg text-white font-semibold text-sm flex items-center gap-2 transition">
+        📂 Add Category
+      </button>
+      <button onclick="openAddDishModal()" class="bg-[#1a1a1a] hover:bg-[#262626] border border-[#2a2a2a] px-5 py-2.5 rounded-lg text-white font-semibold text-sm flex items-center gap-2 transition">
+        🍲 Add Dishes
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex bg-[#1a1a1a] p-1 rounded-lg border border-[#2a2a2a]">
+      <button onclick="switchTab('Metrics')" id="tab-btn-Metrics" class="text-white bg-[#262626] rounded-lg px-6 py-2 font-semibold text-sm transition">
+        Metrics
+      </button>
+      <button onclick="switchTab('Orders')" id="tab-btn-Orders" class="text-brand-textGray hover:text-white rounded-lg px-6 py-2 font-semibold text-sm transition">
+        Orders
+      </button>
+      <button onclick="switchTab('Payments')" id="tab-btn-Payments" class="text-brand-textGray hover:text-white rounded-lg px-6 py-2 font-semibold text-sm transition">
+        Payments
+      </button>
+      <button onclick="switchTab('Reports')" id="tab-btn-Reports" class="text-brand-textGray hover:text-white rounded-lg px-6 py-2 font-semibold text-sm transition">
+        📊 Reports
+      </button>
+      <button onclick="switchTab('Settings')" id="tab-btn-Settings" class="text-brand-textGray hover:text-white rounded-lg px-6 py-2 font-semibold text-sm transition">
+        Settings
+      </button>
+    </div>
+  </div>
+
+  <!-- Scrollable Dashboard Content -->
+  <div class="flex-1 overflow-y-auto p-6 scrollbar-hide">
+    
+    <!-- Metrics Tab -->
+    <div id="tab-content-Metrics" class="space-y-8">
+      <div>
+        <h2 class="font-bold text-white text-lg tracking-wide">Overall Performance</h2>
+        <p class="text-xs text-brand-textGray mt-0.5">Summary of restaurant operation statistics and sales performance</p>
+      </div>
+
+      <!-- Overall Performance Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Revenue Card -->
+        <div class="bg-[#025cca] border border-[#024ea8] p-5 rounded-xl text-white">
+          <div class="flex justify-between items-center text-xs font-semibold uppercase tracking-wider">
+            <span>Revenue</span>
+            <span>+12% 📈</span>
+          </div>
+          <h3 class="text-3xl font-black mt-2">₹{{ revenue|floatformat:2 }}</h3>
+        </div>
+        <!-- Active Orders Card -->
+        <div class="bg-[#be3e3f] border border-[#a63637] p-5 rounded-xl text-white">
+          <div class="flex justify-between items-center text-xs font-semibold uppercase tracking-wider">
+            <span>Active Orders</span>
+            <span>-5% 📉</span>
+          </div>
+          <h3 class="text-3xl font-black mt-2">{{ active_orders }}</h3>
+        </div>
+        <!-- Customer Count -->
+        <div class="bg-[#f6b100] border border-[#d99c00] p-5 rounded-xl text-gray-950">
+          <div class="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
+            <span>Total Customers</span>
+            <span>+10% 📈</span>
+          </div>
+          <h3 class="text-3xl font-black mt-2">{{ customer_count }}</h3>
+        </div>
+        <!-- Average Ticket -->
+        <div class="bg-[#02ca3a] border border-[#02ad32] p-5 rounded-xl text-white">
+          <div class="flex justify-between items-center text-xs font-semibold uppercase tracking-wider">
+            <span>Avg Order Size</span>
+            <span>+8% 📈</span>
+          </div>
+          <h3 class="text-3xl font-black mt-2">₹{{ avg_order_size|floatformat:2 }}</h3>
+        </div>
+      </div>
+
+      <div class="pt-4">
+        <h2 class="font-bold text-white text-lg tracking-wide">Item & Inventory Details</h2>
+        <p class="text-xs text-brand-textGray mt-0.5">Quick summaries of tables and item counts in store</p>
+      </div>
+
+      <!-- Item details grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-[#5b45b0] border border-[#4c3a93] p-5 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-90">Total Categories</p>
+          <h3 class="text-3xl font-black mt-2">8 Categories</h3>
+        </div>
+        <div class="bg-[#285430] border border-[#204326] p-5 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-90">Total Dishes</p>
+          <h3 class="text-3xl font-black mt-2">50+ Dishes</h3>
+        </div>
+        <div class="bg-[#735f32] border border-[#5d4d29] p-5 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-90">Total Tables</p>
+          <h3 class="text-3xl font-black mt-2">{{ tables_count }} Tables</h3>
+        </div>
+        <div class="bg-[#7f167f] border border-[#6b126b] p-5 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-90">Booked Tables</p>
+          <h3 class="text-3xl font-black mt-2">{{ booked_tables }} Tables</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders Tab -->
+    <div id="tab-content-Orders" class="hidden space-y-6">
+      <div>
+        <h2 class="font-bold text-white text-lg tracking-wide">Admin Order Management</h2>
+        <p class="text-xs text-brand-textGray mt-0.5">A complete list of active and recent orders in the restaurant</p>
+      </div>
+
+      <div class="overflow-x-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-[#2a2a2a] text-brand-textGray text-xs uppercase tracking-wider">
+              <th class="p-4 font-bold">ID</th>
+              <th class="p-4 font-bold">Customer Name</th>
+              <th class="p-4 font-bold">Table</th>
+              <th class="p-4 font-bold">Date & Time</th>
+              <th class="p-4 font-bold">Status</th>
+              <th class="p-4 font-bold">Total Amount</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#2a2a2a]/60">
+            {% for order in orders %}
+            <tr class="hover:bg-[#1f1f1f] transition">
+              <td class="p-4 font-semibold text-white">#{{ order.id }}</td>
+              <td class="p-4 font-bold text-white">{{ order.customerDetails.name }}</td>
+              <td class="p-4">Table {{ order.table.tableNo }}</td>
+              <td class="p-4 text-brand-textGray">{{ order.orderDate|date:"M d, Y h:i A" }}</td>
+              <td class="p-4">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider
+                  {% if order.orderStatus == 'Pending' %}bg-red-950/40 text-red-400 border border-red-900/40
+                  {% elif order.orderStatus == 'Preparing' %}bg-yellow-950/40 text-brand-gold border border-yellow-900/40
+                  {% else %}bg-green-950/40 text-green-400 border border-green-900/40{% endif %}">
+                  {{ order.orderStatus }}
+                </span>
+              </td>
+              <td class="p-4 font-black text-white">₹{{ order.bills.totalWithTax|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Payments Tab -->
+    <div id="tab-content-Payments" class="hidden space-y-6">
+      <div>
+        <h2 class="font-bold text-white text-lg tracking-wide">Razorpay & Cash Transactions Log</h2>
+        <p class="text-xs text-brand-textGray mt-0.5">Records of payments captured and stored in the database</p>
+      </div>
+
+      <div class="overflow-x-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-[#2a2a2a] text-brand-textGray text-xs uppercase tracking-wider">
+              <th class="p-4 font-bold">Transaction ID</th>
+              <th class="p-4 font-bold">Order Reference</th>
+              <th class="p-4 font-bold">Contact Email / Phone</th>
+              <th class="p-4 font-bold">Method</th>
+              <th class="p-4 font-bold">Status</th>
+              <th class="p-4 font-bold">Amount Paid</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#2a2a2a]/60">
+            {% if payments %}
+              {% for payment in payments %}
+              <tr class="hover:bg-[#1f1f1f] transition">
+                <td class="p-4 font-semibold text-white">{{ payment.paymentId|default:"CASH_TRX" }}</td>
+                <td class="p-4 text-brand-textGray">{{ payment.orderId }}</td>
+                <td class="p-4">
+                  <div class="flex flex-col">
+                    <span class="text-white">{{ payment.email|default:"N/A" }}</span>
+                    <span class="text-brand-textGray text-xs">{{ payment.contact|default:"N/A" }}</span>
+                  </div>
+                </td>
+                <td class="p-4 font-semibold">{{ payment.method|upper }}</td>
+                <td class="p-4">
+                  <span class="bg-green-950/40 text-green-400 border border-green-900/40 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider">
+                    {{ payment.status }}
+                  </span>
+                </td>
+                <td class="p-4 font-black text-white">₹{{ payment.amount|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center py-10 text-brand-textGray">No transaction records found.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Reports Tab -->
+    <div id="tab-content-Reports" class="hidden space-y-6">
+      <div>
+        <h2 class="font-bold text-white text-lg tracking-wide">📊 Order Reports</h2>
+        <p class="text-xs text-brand-textGray mt-0.5">Filter orders by day or date range and view revenue summaries</p>
+      </div>
+
+      <!-- Quick Preset Filters -->
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-brand-textGray text-xs font-semibold uppercase tracking-wider">Quick Filter:</span>
+        <button onclick="loadReport('today')" id="preset-today" class="px-4 py-2 rounded-lg font-semibold text-xs border border-[#343434] bg-[#262626] text-brand-textGray hover:text-white transition">Today</button>
+        <button onclick="loadReport('week')" id="preset-week" class="px-4 py-2 rounded-lg font-semibold text-xs border border-[#343434] bg-[#262626] text-brand-textGray hover:text-white transition">Last 7 Days</button>
+        <button onclick="loadReport('month')" id="preset-month" class="px-4 py-2 rounded-lg font-semibold text-xs border border-[#343434] bg-[#262626] text-brand-textGray hover:text-white transition">This Month</button>
+      </div>
+
+      <!-- Custom Date Range -->
+      <div class="flex flex-wrap items-end gap-4 bg-[#1a1a1a] border border-[#2a2a2a] p-4 rounded-xl">
+        <div>
+          <label class="block text-brand-textGray mb-1.5 text-xs font-semibold uppercase tracking-wider">From Date</label>
+          <input type="date" id="report-from-date" class="bg-[#262626] border border-[#343434] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-gold">
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-1.5 text-xs font-semibold uppercase tracking-wider">To Date</label>
+          <input type="date" id="report-to-date" class="bg-[#262626] border border-[#343434] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-gold">
+        </div>
+        <button onclick="loadReport('custom')" class="bg-brand-gold hover:bg-brand-darkGold text-white font-bold px-5 py-2 rounded-lg text-sm transition">
+          Generate Report
+        </button>
+        <button onclick="exportReportCSV()" id="btn-export-csv" class="hidden bg-[#262626] hover:bg-[#343434] border border-[#343434] text-white font-semibold px-4 py-2 rounded-lg text-sm transition">
+          ⬇ Export CSV
+        </button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div id="report-summary-cards" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-[#025cca] border border-[#024ea8] p-4 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-80">Total Revenue</p>
+          <h3 id="rpt-revenue" class="text-2xl font-black mt-1">₹0.00</h3>
+        </div>
+        <div class="bg-[#1a1a1a] border border-[#2a2a2a] p-4 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-80">Total Orders</p>
+          <h3 id="rpt-total" class="text-2xl font-black mt-1">0</h3>
+        </div>
+        <div class="bg-[#1a1a1a] border border-[#2a2a2a] p-4 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-80 text-green-400">Completed</p>
+          <h3 id="rpt-completed" class="text-2xl font-black mt-1 text-green-400">0</h3>
+        </div>
+        <div class="bg-[#1a1a1a] border border-[#2a2a2a] p-4 rounded-xl text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-80 text-red-400">Cancelled</p>
+          <h3 id="rpt-cancelled" class="text-2xl font-black mt-1 text-red-400">0</h3>
+        </div>
+      </div>
+
+      <!-- Report Table -->
+      <div id="report-table-wrap" class="hidden overflow-x-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-[#2a2a2a] text-brand-textGray text-xs uppercase tracking-wider">
+              <th class="p-4 font-bold">Date</th>
+              <th class="p-4 font-bold">Total Orders</th>
+              <th class="p-4 font-bold text-green-400">Completed</th>
+              <th class="p-4 font-bold text-yellow-400">Pending</th>
+              <th class="p-4 font-bold text-red-400">Cancelled</th>
+              <th class="p-4 font-bold">Revenue</th>
+            </tr>
+          </thead>
+          <tbody id="report-table-body" class="divide-y divide-[#2a2a2a]/60">
+            <!-- filled by JS -->
+          </tbody>
+          <tfoot>
+            <tr class="border-t-2 border-brand-gold/30 bg-[#1f1f1f]">
+              <td class="p-4 font-black text-white uppercase text-xs tracking-wider">TOTAL</td>
+              <td id="rpt-foot-total" class="p-4 font-black text-white">-</td>
+              <td id="rpt-foot-completed" class="p-4 font-black text-green-400">-</td>
+              <td id="rpt-foot-pending" class="p-4 font-black text-yellow-400">-</td>
+              <td id="rpt-foot-cancelled" class="p-4 font-black text-red-400">-</td>
+              <td id="rpt-foot-revenue" class="p-4 font-black text-brand-gold">-</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Empty state -->
+      <div id="report-empty" class="hidden text-center py-16 text-brand-textGray">
+        <p class="text-4xl mb-3">📋</p>
+        <p class="font-semibold">No orders found for the selected date range.</p>
+      </div>
+
+      <!-- Loading state -->
+      <div id="report-loading" class="hidden text-center py-16 text-brand-textGray">
+        <p class="text-2xl mb-3 animate-spin inline-block">⏳</p>
+        <p class="font-semibold">Loading report…</p>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-content-Settings" class="hidden space-y-8">
+      <div>
+        <h2 class="font-bold text-white text-lg tracking-wide">Receipt Settings</h2>
+        <p class="text-xs text-brand-textGray mt-0.5">Customize shop details printed at the top of POS receipts</p>
+      </div>
+
+      <!-- Receipt settings form -->
+      <div class="bg-[#1f1f1f] border border-[#2a2a2a] p-6 rounded-2xl max-w-lg space-y-4">
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Shop Name</label>
+          <input type="text" id="pos-print-shop" value="VILLAGE CAFE" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Address</label>
+          <input type="text" id="pos-print-address" value="123 Main Road, City" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Mobile / Phone</label>
+          <input type="text" id="pos-print-phone" value="+91 9876543210" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+        </div>
+        <button onclick="saveReceiptSettings()" class="bg-brand-gold hover:bg-brand-darkGold text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">
+          Save Receipt Settings
+        </button>
+      </div>
+
+      <!-- Printer Settings -->
+      <div class="pt-2">
+        <h2 class="font-bold text-white text-lg tracking-wide">🖨️ Printer Settings</h2>
+        <p class="text-xs text-brand-textGray mt-0.5">Set your preferred printer name and receipt paper width</p>
+      </div>
+      <div class="bg-[#1f1f1f] border border-[#2a2a2a] p-6 rounded-2xl max-w-lg space-y-4">
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Printer Name</label>
+          <input type="text" id="pos-printer-name" placeholder="e.g. BillQuick Elite, EPSON TM-T82"
+            class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none focus:border-brand-gold text-sm">
+          <p class="text-brand-textGray text-xs mt-1.5">⚠️ Browsers cannot auto-select printers. This name is shown as a reminder in the print dialog — manually select it there.</p>
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Receipt Paper Width</label>
+          <div class="flex gap-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="receipt-width" id="width-58" value="58" class="accent-brand-gold w-4 h-4">
+              <span class="text-white text-sm font-semibold">58mm <span class="text-brand-textGray text-xs">(2 inch)</span></span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="receipt-width" id="width-80" value="80" checked class="accent-brand-gold w-4 h-4">
+              <span class="text-white text-sm font-semibold">80mm <span class="text-brand-textGray text-xs">(3 inch — BillQuick Elite)</span></span>
+            </label>
+          </div>
+        </div>
+        <div class="flex gap-3 pt-1">
+          <button onclick="savePrinterSettings()" class="bg-brand-gold hover:bg-brand-darkGold text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">
+            Save Printer Settings
+          </button>
+          <button onclick="testPrint()" class="bg-[#262626] hover:bg-[#343434] border border-[#2a2a2a] text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">
+            🖨️ Test Print
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-4 flex items-center justify-between">
+        <div>
+          <h2 class="font-bold text-white text-lg tracking-wide">Menu & Dish Settings</h2>
+          <p class="text-xs text-brand-textGray mt-0.5">Manage category dishes, prices, and listings</p>
+        </div>
+        <button onclick="openAddDishModal()" class="bg-brand-gold hover:bg-brand-darkGold text-white font-bold px-5 py-2.5 rounded-lg text-sm transition">
+          + Add New Dish
+        </button>
+      </div>
+
+      <!-- Category Filter Tabs in Admin Settings -->
+      <div id="admin-category-tabs" class="flex flex-wrap gap-2 py-2">
+        <!-- Rendered in javascript -->
+      </div>
+
+      <!-- Dishes manager grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="admin-dishes-grid">
+        <!-- Rendered in javascript -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Add Dish Modal -->
+  <div id="add-dish-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-[#1f1f1f] border border-[#2a2a2a] w-full max-w-md p-6 rounded-2xl relative shadow-2xl">
+      <button onclick="closeAddDishModal()" class="absolute top-4 right-4 text-brand-textGray hover:text-white text-xl focus:outline-none">&times;</button>
+      <h2 class="text-xl font-bold text-white mb-4 tracking-wider">Add New Dish</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Dish Name</label>
+          <input type="text" id="add-dish-name" placeholder="e.g. Paneer Butter Masala" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Price (₹)</label>
+          <input type="number" id="add-dish-price" placeholder="e.g. 240" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Category</label>
+          <select id="add-dish-category" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+            <option value="Starters">🍲 Starters</option>
+            <option value="Main Course" selected>🍛 Main Course</option>
+            <option value="Beverages">🥤 Beverages</option>
+            <option value="Desserts">🍨 Desserts</option>
+          </select>
+        </div>
+        <button onclick="submitAddDish()" class="w-full bg-brand-gold hover:bg-brand-darkGold text-white font-bold rounded-lg py-3 tracking-wider text-base transition mt-2">
+          Add to Menu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Dish Modal -->
+  <div id="edit-dish-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-[#1f1f1f] border border-[#2a2a2a] w-full max-w-md p-6 rounded-2xl relative shadow-2xl">
+      <button onclick="closeEditDishModal()" class="absolute top-4 right-4 text-brand-textGray hover:text-white text-xl focus:outline-none">&times;</button>
+      <h2 class="text-xl font-bold text-white mb-4 tracking-wider">Edit Dish</h2>
+      <input type="hidden" id="edit-dish-id">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Dish Name</label>
+          <input type="text" id="edit-dish-name" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Price (₹)</label>
+          <input type="number" id="edit-dish-price" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Category</label>
+          <select id="edit-dish-category" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
+            <option value="Starters">🍲 Starters</option>
+            <option value="Main Course">🍛 Main Course</option>
+            <option value="Beverages">🥤 Beverages</option>
+            <option value="Desserts">🍨 Desserts</option>
+          </select>
+        </div>
+        <div class="flex gap-3 mt-2">
+          <button onclick="submitDeleteDish()" class="flex-1 bg-red-950/40 hover:bg-red-900/40 text-red-500 border border-red-900 font-bold rounded-lg py-3 tracking-wider text-sm transition">
+            🗑&nbsp;Delete Dish
+          </button>
+          <button onclick="submitEditDish()" class="flex-1 bg-brand-gold hover:bg-brand-darkGold text-white font-bold rounded-lg py-3 tracking-wider text-sm transition">
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Table Modal (Reused) -->
+  <div id="dashboard-add-table-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] w-full max-w-sm rounded-xl p-6 shadow-2xl relative">
+      <button onclick="closeTableModal()" class="absolute top-4 right-4 text-brand-textGray hover:text-white text-xl">&times;</button>
+      <h2 class="text-xl font-bold mb-4 text-white">Add New Table</h2>
+      
+      <form action="/table/create/?redirect=dashboard" method="POST" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-brand-textGray mb-2 text-sm font-medium">Table Number</label>
+          <input type="number" name="tableNo" placeholder="Enter table number" class="w-full bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg p-3 text-white focus:outline-none focus:border-brand-gold" required>
+        </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-sm font-medium">Seats Count</label>
+          <input type="number" name="seats" placeholder="Enter seat count" class="w-full bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg p-3 text-white focus:outline-none focus:border-brand-gold" required>
+        </div>
+        <button type="submit" class="w-full bg-brand-gold hover:bg-brand-darkGold text-white font-bold rounded-lg py-3 mt-4 transition">
+          Create Table
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Print Reminder Toast (shown briefly before print dialog opens) -->
+<div id="print-reminder-toast" style="display:none;"
+  class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center">
+  <div class="bg-[#1f1f1f] border border-brand-gold/40 rounded-2xl p-8 text-center shadow-2xl max-w-sm mx-4">
+    <div class="text-4xl mb-3">🖨️</div>
+    <h3 class="text-white font-bold text-lg mb-2">Opening Print Dialog</h3>
+    <p class="text-brand-textGray text-sm mb-1">Please select this printer:</p>
+    <p id="toast-printer-name" class="text-brand-gold font-black text-xl tracking-wide">BillQuick Elite</p>
+    <p class="text-brand-textGray text-xs mt-3">The print dialog will open automatically…</p>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Injected dynamic menus from Django context database
+    const menuData = {{ menus_json|safe }};
+    let activeSettingsCategory = menuData[0] || null;
+
+    // Tab switching controller
+    function switchTab(tabName) {
+        const tabs = ["Metrics", "Orders", "Payments", "Reports", "Settings"];
+        tabs.forEach(t => {
+            const btn = document.getElementById(`tab-btn-${t}`);
+            const content = document.getElementById(`tab-content-${t}`);
+            if (t === tabName) {
+                btn.className = "text-white bg-[#262626] rounded-lg px-6 py-2 font-semibold text-sm transition";
+                content.classList.remove('hidden');
+            } else {
+                btn.className = "text-brand-textGray hover:text-white rounded-lg px-6 py-2 font-semibold text-sm transition";
+                content.classList.add('hidden');
+            }
+        });
+    }
+
+    // Modal helpers
+    function openTableModal() {
+        document.getElementById('dashboard-add-table-modal').classList.remove('hidden');
+    }
+    function closeTableModal() {
+        document.getElementById('dashboard-add-table-modal').classList.add('hidden');
+    }
+
+    // Receipt Configuration Storage
+    function saveReceiptSettings() {
+        const shop = document.getElementById('pos-print-shop').value;
+        const address = document.getElementById('pos-print-address').value;
+        const phone = document.getElementById('pos-print-phone').value;
+        localStorage.setItem('pos_receipt_settings', JSON.stringify({ shop, address, phone }));
+        showToastMsg('Receipt header settings saved!');
+    }
+
+    function loadReceiptSettings() {
+        const settingsRaw = localStorage.getItem('pos_receipt_settings');
+        if (settingsRaw) {
+            try {
+                const settings = JSON.parse(settingsRaw);
+                if (settings.shop) document.getElementById('pos-print-shop').value = settings.shop;
+                if (settings.address) document.getElementById('pos-print-address').value = settings.address;
+                if (settings.phone) document.getElementById('pos-print-phone').value = settings.phone;
+            } catch(e) {}
+        }
+        // Load printer settings
+        const printerName = localStorage.getItem('pos_printer_name') || '';
+        const printerWidth = localStorage.getItem('pos_receipt_width') || '80';
+        const printerNameEl = document.getElementById('pos-printer-name');
+        if (printerNameEl) printerNameEl.value = printerName;
+        const widthRadio = document.getElementById(`width-${printerWidth}`);
+        if (widthRadio) widthRadio.checked = true;
+    }
+
+    // Printer Settings
+    function savePrinterSettings() {
+        const name = document.getElementById('pos-printer-name').value.trim();
+        const width = document.querySelector('input[name="receipt-width"]:checked')?.value || '80';
+        localStorage.setItem('pos_printer_name', name);
+        localStorage.setItem('pos_receipt_width', width);
+        showToastMsg(`Printer settings saved! Printer: "${name || 'Not set'}", Width: ${width}mm`);
+    }
+
+    // Test Print — prints a sample receipt
+    function testPrint() {
+        const printerName = localStorage.getItem('pos_printer_name') || 'Not set';
+        const width = localStorage.getItem('pos_receipt_width') || '80';
+        const settings = JSON.parse(localStorage.getItem('pos_receipt_settings') || '{"shop":"VILLAGE CAFE","address":"123 Main Road, City","phone":"+91 9876543210"}');
+        // Open a small popup with receipt preview
+        const win = window.open('', '_blank', 'width=400,height=600');
+        win.document.write(`
+            <!DOCTYPE html>
+            <html><head><title>Test Receipt</title>
+            <style>
+                body { font-family: 'Courier New', monospace; font-size: 11px; margin: 0; padding: 4mm; width: ${width}mm; color: black; }
+                h2 { font-size: 15px; margin: 0 0 2px; text-transform: uppercase; text-align: center; }
+                p { margin: 2px 0; text-align: center; }
+                table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                th, td { padding: 2px 0; }
+                hr { border: none; border-top: 1px dashed black; margin: 4px 0; }
+                .right { text-align: right; } .center { text-align: center; }
+                @page { size: ${width}mm auto; margin: 0; }
+            </style></head><body>
+            <h2>${settings.shop || 'RESTAURANT'}</h2>
+            <p>${settings.address || ''}</p>
+            <p>${settings.phone ? 'Mob: ' + settings.phone : ''}</p>
+            <p style="font-size:10px">${new Date().toLocaleString()}</p>
+            <hr/>
+            <p style="text-align:left"><strong>TEST RECEIPT</strong><br/>Table: 1 | Cust: Test Customer</p>
+            <hr/>
+            <table>
+                <tr><th style="text-align:left">Item</th><th class="center">Qty</th><th class="right">Price</th><th class="right">Total</th></tr>
+                <tr><td>Sample Dish</td><td class="center">2</td><td class="right">&#8377;120.00</td><td class="right">&#8377;240.00</td></tr>
+                <tr><td>Beverages</td><td class="center">1</td><td class="right">&#8377;60.00</td><td class="right">&#8377;60.00</td></tr>
+            </table>
+            <hr/>
+            <div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>&#8377;300.00</span></div>
+            <div style="display:flex;justify-content:space-between"><span>CGST &amp; SGST (18%):</span><span>&#8377;54.00</span></div>
+            <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed black;padding-top:3px;margin-top:3px"><span>TOTAL:</span><span>&#8377;354.00</span></div>
+            <hr/>
+            <p>Thank you for visiting!</p>
+            <script>window.onload = function() { window.print(); }<\/script>
+            </body></html>
+        `);
+        win.document.close();
+    }
+
+    // Simple in-app toast notification
+    function showToastMsg(msg) {
+        let toast = document.getElementById('app-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'app-toast';
+            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;background:#1f1f1f;border:1px solid #f6b100;color:white;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,0.4);transition:opacity 0.3s;';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.opacity = '1';
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => { toast.style.display = 'none'; }, 300); }, 3000);
+    }
+
+    // Admin category navigation
+    function renderAdminCategories() {
+        const container = document.getElementById('admin-category-tabs');
+        if (!container) return;
+        container.innerHTML = '';
+
+        menuData.forEach(cat => {
+            const isSelected = activeSettingsCategory && cat.id === activeSettingsCategory.id;
+            const tab = document.createElement('button');
+            tab.className = `px-4 py-2 rounded-lg font-semibold text-xs transition border
+              ${isSelected ? 'bg-brand-gold/20 border-brand-gold text-white' : 'bg-[#262626] border-[#343434] text-brand-textGray hover:text-white'}`;
+            tab.textContent = `${cat.icon} ${cat.name}`;
+            tab.addEventListener('click', () => {
+                activeSettingsCategory = cat;
+                renderAdminCategories();
+                renderAdminItems();
+            });
+            container.appendChild(tab);
+        });
+    }
+
+    // Admin items grid renderer
+    function renderAdminItems() {
+        const container = document.getElementById('admin-dishes-grid');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!activeSettingsCategory || !activeSettingsCategory.items.length) {
+            container.innerHTML = '<p class="text-brand-textGray text-sm col-span-full py-6">No dishes in this category yet.</p>';
+            return;
+        }
+
+        activeSettingsCategory.items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = "flex flex-col justify-between p-4 rounded-xl hover:bg-[#2c2c2c] bg-[#262626] border border-[#343434] transition duration-200 h-[120px]";
+            
+            const escapedName = item.name.replace(/'/g, "\\'");
+            
+            card.innerHTML = `
+                <div class="flex items-start justify-between w-full">
+                    <h3 class="text-white text-sm font-bold truncate max-w-[150px]" title="${item.name}">${item.name}</h3>
+                    <button onclick="openEditDishModal(${item.id}, '${escapedName}', ${item.price})" class="text-brand-textGray hover:text-brand-gold text-xs leading-none transition" title="Edit Item">
+                      ✏️ Edit
+                    </button>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                    <p class="text-brand-gold text-base font-black">₹${item.price.toFixed(2)}</p>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Modal and AJAX endpoints handlers
+    function openAddDishModal() {
+        document.getElementById('add-dish-modal').classList.remove('hidden');
+    }
+    function closeAddDishModal() {
+        document.getElementById('add-dish-modal').classList.add('hidden');
+    }
+    async function submitAddDish() {
+        const name = document.getElementById('add-dish-name').value.trim();
+        const price = document.getElementById('add-dish-price').value.trim();
+        const category = document.getElementById('add-dish-category').value;
+        const iconMapping = {
+            "Starters": "🍲",
+            "Main Course": "🍛",
+            "Beverages": "🥤",
+            "Desserts": "🍨"
+        };
+        const icon = iconMapping[category] || "🍛";
+
+        if (!name || !price) {
+            alert('Name and price are required!');
+            return;
+        }
+
+        try {
+            const response = await fetch('/item/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ name, price, category, icon })
+            });
+            const res = await response.json();
+            if (res.success) {
+                alert('Dish added successfully!');
+                window.location.reload();
+            } else {
+                alert(res.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error adding dish.');
+        }
+    }
+
+    function openEditDishModal(id, name, price) {
+        document.getElementById('edit-dish-id').value = id;
+        document.getElementById('edit-dish-name').value = name;
+        document.getElementById('edit-dish-price').value = price;
+        if (activeSettingsCategory) {
+            document.getElementById('edit-dish-category').value = activeSettingsCategory.name;
+        }
+        document.getElementById('edit-dish-modal').classList.remove('hidden');
+    }
+    function closeEditDishModal() {
+        document.getElementById('edit-dish-modal').classList.add('hidden');
+    }
+    async function submitEditDish() {
+        const id = document.getElementById('edit-dish-id').value;
+        const name = document.getElementById('edit-dish-name').value.trim();
+        const price = document.getElementById('edit-dish-price').value.trim();
+        const category = document.getElementById('edit-dish-category').value;
+
+        if (!name || !price) {
+            alert('Name and price are required!');
+            return;
+        }
+
+        try {
+            const response = await fetch('/item/edit/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ id, name, price, category })
+            });
+            const res = await response.json();
+            if (res.success) {
+                alert('Dish updated successfully!');
+                window.location.reload();
+            } else {
+                alert(res.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error updating dish.');
+        }
+    }
+    async function submitDeleteDish() {
+        if (!confirm('Are you sure you want to delete this dish?')) return;
+        const id = document.getElementById('edit-dish-id').value;
+
+        try {
+            const response = await fetch('/item/delete/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ id })
+            });
+            const res = await response.json();
+            if (res.success) {
+                alert('Dish deleted successfully!');
+                window.location.reload();
+            } else {
+                alert(res.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error deleting dish.');
+        }
+    }
+
+    // Initialize
+    loadReceiptSettings();
+    renderAdminCategories();
+    renderAdminItems();
+
+    // =============================================
+    // ORDER REPORT FUNCTIONS
+    // =============================================
+    let reportData = null; // store last fetched report for CSV export
+
+    // Initialize date inputs with today's date
+    (function initReportDates() {
+        const today = new Date().toISOString().split('T')[0];
+        const fromEl = document.getElementById('report-from-date');
+        const toEl = document.getElementById('report-to-date');
+        if (fromEl) fromEl.value = today;
+        if (toEl) toEl.value = today;
+    })();
+
+    async function loadReport(mode) {
+        // Highlight active preset button
+        ['today','week','month'].forEach(p => {
+            const btn = document.getElementById(`preset-${p}`);
+            if (btn) btn.className = `px-4 py-2 rounded-lg font-semibold text-xs border transition ${
+                p === mode ? 'border-brand-gold bg-brand-gold/20 text-white' : 'border-[#343434] bg-[#262626] text-brand-textGray hover:text-white'
+            }`;
+        });
+
+        // Show loading
+        ['report-summary-cards','report-table-wrap','report-empty'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+        document.getElementById('report-loading').classList.remove('hidden');
+        document.getElementById('btn-export-csv').classList.add('hidden');
+
+        let url = '/report/orders/';
+        if (mode === 'today' || mode === 'week' || mode === 'month') {
+            url += `?preset=${mode}`;
+        } else {
+            // custom date range
+            const from = document.getElementById('report-from-date').value;
+            const to = document.getElementById('report-to-date').value;
+            if (!from || !to) {
+                alert('Please select both From and To dates.');
+                document.getElementById('report-loading').classList.add('hidden');
+                return;
+            }
+            if (from > to) {
+                alert('From date cannot be after To date.');
+                document.getElementById('report-loading').classList.add('hidden');
+                return;
+            }
+            url += `?from_date=${from}&to_date=${to}`;
+        }
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            document.getElementById('report-loading').classList.add('hidden');
+
+            if (!data.success) {
+                alert(data.message || 'Failed to load report.');
+                return;
+            }
+
+            reportData = data;
+
+            // Fill summary cards
+            const s = data.summary;
+            document.getElementById('rpt-revenue').textContent = `₹${s.total_revenue.toFixed(2)}`;
+            document.getElementById('rpt-total').textContent = s.total_orders;
+            document.getElementById('rpt-completed').textContent = s.total_completed;
+            document.getElementById('rpt-cancelled').textContent = s.total_cancelled;
+
+            // Fill table body
+            const tbody = document.getElementById('report-table-body');
+            tbody.innerHTML = '';
+
+            let pendingTotal = 0;
+            if (data.rows && data.rows.length > 0 && data.rows.some(r => r.orders > 0)) {
+                data.rows.forEach(row => {
+                    if (row.orders === 0) return; // skip zero-order days (optional: remove to show all days)
+                    pendingTotal += row.pending;
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-[#1f1f1f] transition';
+                    tr.innerHTML = `
+                        <td class="p-4 font-semibold text-white">${row.display_date}</td>
+                        <td class="p-4 text-white">${row.orders}</td>
+                        <td class="p-4 text-green-400">${row.completed}</td>
+                        <td class="p-4 text-yellow-400">${row.pending}</td>
+                        <td class="p-4 text-red-400">${row.cancelled}</td>
+                        <td class="p-4 font-black text-brand-gold">₹${row.revenue.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                // Footer totals
+                document.getElementById('rpt-foot-total').textContent = s.total_orders;
+                document.getElementById('rpt-foot-completed').textContent = s.total_completed;
+                document.getElementById('rpt-foot-pending').textContent = pendingTotal;
+                document.getElementById('rpt-foot-cancelled').textContent = s.total_cancelled;
+                document.getElementById('rpt-foot-revenue').textContent = `₹${s.total_revenue.toFixed(2)}`;
+
+                document.getElementById('report-summary-cards').classList.remove('hidden');
+                document.getElementById('report-table-wrap').classList.remove('hidden');
+                document.getElementById('btn-export-csv').classList.remove('hidden');
+            } else {
+                document.getElementById('report-empty').classList.remove('hidden');
+                document.getElementById('report-summary-cards').classList.remove('hidden');
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('report-loading').classList.add('hidden');
+            alert('Error loading report. Please try again.');
+        }
+    }
+
+    function exportReportCSV() {
+        if (!reportData || !reportData.rows) return;
+        const headers = ['Date', 'Total Orders', 'Completed', 'Pending', 'Cancelled', 'Revenue (INR)'];
+        const csvRows = [headers.join(',')];
+        reportData.rows.forEach(r => {
+            if (r.orders === 0) return;
+            csvRows.push([
+                r.display_date, r.orders, r.completed, r.pending, r.cancelled, r.revenue.toFixed(2)
+            ].join(','));
+        });
+        const s = reportData.summary;
+        csvRows.push(['TOTAL', s.total_orders, s.total_completed, '', s.total_cancelled, s.total_revenue.toFixed(2)].join(','));
+
+        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `order_report_${reportData.from_date}_to_${reportData.to_date}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+{% endblock %}
