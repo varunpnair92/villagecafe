@@ -512,12 +512,9 @@
             const data = await response.json();
             if (data.success) {
                 if (shouldPrint) {
-                    // Print first, then redirect AFTER print dialog is dismissed
+                    // Open receipt popup (non-blocking), then redirect
                     printPOSReceipt();
-                    window.addEventListener('afterprint', function onAfterPrint() {
-                        window.removeEventListener('afterprint', onAfterPrint);
-                        window.location.href = '/orders/';
-                    });
+                    setTimeout(() => { window.location.href = '/orders/'; }, 300);
                 } else {
                     alert('Order placed successfully!');
                     window.location.href = '/orders/';
@@ -537,91 +534,93 @@
             return;
         }
 
-        // Load heading setup from localized storage object
-        const shopName = receiptSettings.shop || 'VILLAGE CAFE';
-        const shopAddress = receiptSettings.address || '';
-        const shopPhone = receiptSettings.phone || '';
+        // Load settings
+        let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210' };
+        const raw = localStorage.getItem('pos_receipt_settings');
+        if (raw) { try { receiptSettings = JSON.parse(raw); } catch(e){} }
 
-        document.getElementById('receipt-shop-name').textContent = shopName;
-        document.getElementById('receipt-shop-address').textContent = shopAddress;
-        document.getElementById('receipt-shop-phone').textContent = shopPhone ? 'Mob: ' + shopPhone : '';
-
-        // Set current date/time in receipt
-        const now = new Date();
-        document.getElementById('receipt-date-time').textContent = now.toLocaleString();
-
-        // Set customer / table info
-        const custName = "{{ customer.name }}";
-        const custPhone = "{{ customer.phone }}";
+        const width = localStorage.getItem('pos_receipt_width') || '80';
+        const custName = "{{ customer.name|default:'Guest' }}";
+        const custPhone = "{{ customer.phone|default:'N/A' }}";
         const tableNo = "{{ customer.table_no|default:'N/A' }}";
-        document.getElementById('receipt-cust-info').innerHTML = `
-            <strong>Cust:</strong> ${custName || 'Guest'}<br/>
-            <strong>Phone:</strong> ${custPhone || 'N/A'}<br/>
-            <strong>Table:</strong> ${tableNo}
-        `;
+        const now = new Date().toLocaleString();
 
-        // Populate items table
-        const tbody = document.getElementById('receipt-items-body');
-        tbody.innerHTML = '';
-
-        let subtotal = 0;
-        let totalItems = 0;
-        cart.forEach(item => {
-            subtotal += item.total;
-            totalItems += item.quantity;
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td style="padding: 3px 0; text-align: left;">${item.name}</td>
-                <td style="text-align: center; padding: 3px 0;">${item.quantity}</td>
-                <td style="text-align: right; padding: 3px 0;">₹${item.price.toFixed(2)}</td>
-                <td style="text-align: right; padding: 3px 0;">₹${item.total.toFixed(2)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-
+        // Build totals
+        const subtotal = cart.reduce((acc, item) => acc + item.total, 0);
         const tax = subtotal * 0.18;
         const total = subtotal + tax;
 
-        document.getElementById('receipt-total-items').textContent = totalItems;
-        document.getElementById('receipt-subtotal').textContent = `₹${subtotal.toFixed(2)}`;
-        document.getElementById('receipt-tax').textContent = `₹${tax.toFixed(2)}`;
-        document.getElementById('receipt-total').textContent = `₹${total.toFixed(2)}`;
+        // Build items rows HTML
+        let itemsHtml = '';
+        cart.forEach(item => {
+            itemsHtml += `<tr>
+                <td style="padding:3px 0;text-align:left;">${item.name}</td>
+                <td style="text-align:center;padding:3px 4px;">${item.quantity}</td>
+                <td style="text-align:right;padding:3px 4px;">&#8377;${parseFloat(item.price||0).toFixed(2)}</td>
+                <td style="text-align:right;padding:3px 0;">&#8377;${parseFloat(item.total||0).toFixed(2)}</td>
+            </tr>`;
+        });
 
-        // Get chosen width: 58mm or 80mm
-        const widthSelected = localStorage.getItem('pos_receipt_width') || document.getElementById('pos-width-select').value || '80';
-
-        // Sync the dropdown to saved value
-        const widthSelect = document.getElementById('pos-width-select');
-        if (widthSelect) widthSelect.value = widthSelected;
-
-        // Apply width styles to printable receipt container
-        const printContainer = document.getElementById('pos-receipt-print');
-        printContainer.style.width = widthSelected + 'mm';
-        document.documentElement.style.setProperty('--receipt-width', widthSelected + 'mm');
-
-        // Show receipt before printing (display:none blocks print)
-        printContainer.style.display = 'block';
-
-        // Show printer reminder toast if printer name is saved
+        // Show printer reminder toast if printer name is set
         const printerName = localStorage.getItem('pos_printer_name') || '';
         const toast = document.getElementById('print-reminder-toast');
         const toastNameEl = document.getElementById('toast-printer-name');
         if (toast && printerName) {
             if (toastNameEl) toastNameEl.textContent = printerName;
             toast.style.display = 'flex';
-            setTimeout(() => {
-                toast.style.display = 'none';
-                window.print();
-            }, 1500);
-        } else {
-            window.print();
+            setTimeout(() => { if (toast) toast.style.display = 'none'; }, 2000);
         }
 
-        window.addEventListener('afterprint', function onPrinted() {
-            window.removeEventListener('afterprint', onPrinted);
-            printContainer.style.display = 'none';
-            if (toast) toast.style.display = 'none';
-        });
+        // Open popup and write receipt — same approach as Test Print (which works)
+        const win = window.open('', '_blank', `width=${parseInt(width)*4+80},height=700`);
+        win.document.write(`<!DOCTYPE html>
+<html><head><title>Receipt</title>
+<style>
+  body { font-family:'Courier New',Courier,monospace; font-size:11px; margin:0; padding:4mm; width:${width}mm; color:black; background:white; }
+  h2  { font-size:15px; margin:0 0 2px; text-transform:uppercase; text-align:center; }
+  p   { margin:2px 0; text-align:center; font-size:11px; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th,td { padding:2px 0; }
+  .left  { text-align:left; }
+  .right { text-align:right; }
+  .center{ text-align:center; }
+  hr { border:none; border-top:1px dashed black; margin:5px 0; }
+  .total-row { display:flex; justify-content:space-between; }
+  .grand-total { font-weight:bold; font-size:13px; border-top:1px dashed black; padding-top:3px; margin-top:3px; }
+  @page { size:${width}mm auto; margin:0; }
+</style>
+</head><body>
+<h2>${receiptSettings.shop || 'RESTAURANT'}</h2>
+${receiptSettings.address ? `<p>${receiptSettings.address}</p>` : ''}
+${receiptSettings.phone ? `<p>Mob: ${receiptSettings.phone}</p>` : ''}
+<p style="font-size:10px;">${now}</p>
+<hr/>
+<p style="text-align:left;line-height:1.5;">
+  <strong>Cust:</strong> ${custName}<br/>
+  <strong>Phone:</strong> ${custPhone}<br/>
+  <strong>Table:</strong> ${tableNo}
+</p>
+<hr/>
+<table>
+  <thead>
+    <tr style="border-bottom:1px dashed black;">
+      <th class="left">Item</th>
+      <th class="center">Qty</th>
+      <th class="right">Price</th>
+      <th class="right">Total</th>
+    </tr>
+  </thead>
+  <tbody>${itemsHtml}</tbody>
+</table>
+<hr/>
+<div class="total-row"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
+<div class="total-row"><span>CGST &amp; SGST (18%):</span><span>&#8377;${tax.toFixed(2)}</span></div>
+<div class="total-row grand-total"><span>TOTAL AMOUNT:</span><span>&#8377;${total.toFixed(2)}</span></div>
+<hr/>
+<p>Thank you for visiting!<br/>Have a great day!</p>
+<script>window.onload = function() { window.print(); }<\/script>
+</body></html>`);
+        win.document.close();
     }
 
     // Initialize

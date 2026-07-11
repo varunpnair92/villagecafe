@@ -350,89 +350,99 @@
         }
     }
 
-    // Print receipt — fetches order data cleanly from server API
+    // Print receipt — opens a popup window (same reliable approach as Test Print)
     async function printOrderReceipt(orderId) {
-        const receiptEl = document.getElementById('orders-receipt-print');
         try {
             const res = await fetch(`/order/json/${orderId}/`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const orderData = await res.json();
             if (!orderData.success) throw new Error(orderData.message || 'Server error');
 
-            // Load shop settings from localStorage (set via Admin > Settings)
+            // Load settings from localStorage
             let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210' };
             const raw = localStorage.getItem('pos_receipt_settings');
             if (raw) { try { receiptSettings = JSON.parse(raw); } catch(e){} }
 
-            // Apply receipt width
-            const receiptWidth = localStorage.getItem('pos_receipt_width') || '80';
-            document.documentElement.style.setProperty('--receipt-width', receiptWidth + 'mm');
-
-            // Fill header
-            document.getElementById('ord-receipt-shop-name').textContent = receiptSettings.shop || 'RESTAURANT';
-            document.getElementById('ord-receipt-shop-address').textContent = receiptSettings.address || '';
-            document.getElementById('ord-receipt-shop-phone').textContent =
-                receiptSettings.phone ? 'Mob: ' + receiptSettings.phone : '';
-            document.getElementById('ord-receipt-datetime').textContent = orderData.date;
-            document.getElementById('ord-receipt-cust-info').innerHTML =
-                `<strong>Order #${orderData.id}</strong><br/>` +
-                `<strong>Cust:</strong> ${orderData.customer}<br/>` +
-                `<strong>Phone:</strong> ${orderData.phone}<br/>` +
-                `<strong>Table:</strong> ${orderData.table}<br/>` +
-                `<strong>Payment:</strong> ${orderData.payment}`;
-
-            // Fill items table
-            const tbody = document.getElementById('ord-receipt-items-body');
-            tbody.innerHTML = '';
-            const items = orderData.items || [];
-            items.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td style="padding: 3px 0; text-align: left;">${item.name}</td>
-                    <td style="text-align: center; padding: 3px 4px;">${item.quantity}</td>
-                    <td style="text-align: right; padding: 3px 4px;">&#8377;${parseFloat(item.price || 0).toFixed(2)}</td>
-                    <td style="text-align: right; padding: 3px 0;">&#8377;${parseFloat(item.total || 0).toFixed(2)}</td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            // Fill totals
+            const width = localStorage.getItem('pos_receipt_width') || '80';
             const bills = orderData.bills || {};
-            document.getElementById('ord-receipt-subtotal').textContent =
-                `\u20B9${parseFloat(bills.total || 0).toFixed(2)}`;
-            document.getElementById('ord-receipt-tax').textContent =
-                `\u20B9${parseFloat(bills.tax || 0).toFixed(2)}`;
-            document.getElementById('ord-receipt-total').textContent =
-                `\u20B9${parseFloat(bills.totalWithTax || 0).toFixed(2)}`;
+            const items = orderData.items || [];
 
-            // CRITICAL: show the receipt div BEFORE printing (display:none blocks @media print)
-            receiptEl.style.display = 'block';
-
-            // Show printer reminder toast then open print dialog
+            // Show printer reminder if set
             const printerName = localStorage.getItem('pos_printer_name') || '';
             const toast = document.getElementById('print-reminder-toast');
             const toastNameEl = document.getElementById('toast-printer-name');
             if (toast && printerName) {
                 if (toastNameEl) toastNameEl.textContent = printerName;
                 toast.style.display = 'flex';
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                    window.print();
-                }, 1500);
-            } else {
-                window.print();
+                setTimeout(() => { if (toast) toast.style.display = 'none'; }, 2000);
             }
 
-            // Hide receipt again after print dialog is closed
-            window.addEventListener('afterprint', function onAfterPrint() {
-                window.removeEventListener('afterprint', onAfterPrint);
-                receiptEl.style.display = 'none';
-                if (toast) toast.style.display = 'none';
+            // Build items rows HTML
+            let itemsHtml = '';
+            items.forEach(item => {
+                itemsHtml += `<tr>
+                    <td style="padding:3px 0;text-align:left;">${item.name}</td>
+                    <td style="text-align:center;padding:3px 4px;">${item.quantity}</td>
+                    <td style="text-align:right;padding:3px 4px;">&#8377;${parseFloat(item.price||0).toFixed(2)}</td>
+                    <td style="text-align:right;padding:3px 0;">&#8377;${parseFloat(item.total||0).toFixed(2)}</td>
+                </tr>`;
             });
+
+            // Open popup and write receipt HTML directly — no CSS inheritance issues
+            const win = window.open('', '_blank', `width=${parseInt(width)*4+80},height=700`);
+            win.document.write(`<!DOCTYPE html>
+<html><head><title>Receipt - Order #${orderData.id}</title>
+<style>
+  body { font-family:'Courier New',Courier,monospace; font-size:11px; margin:0; padding:4mm; width:${width}mm; color:black; background:white; }
+  h2  { font-size:15px; margin:0 0 2px; text-transform:uppercase; text-align:center; }
+  p   { margin:2px 0; text-align:center; font-size:11px; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th,td { padding:2px 0; }
+  .left  { text-align:left; }
+  .right { text-align:right; }
+  .center{ text-align:center; }
+  hr { border:none; border-top:1px dashed black; margin:5px 0; }
+  .total-row { display:flex; justify-content:space-between; }
+  .grand-total { font-weight:bold; font-size:13px; border-top:1px dashed black; padding-top:3px; margin-top:3px; }
+  @page { size:${width}mm auto; margin:0; }
+</style>
+</head><body>
+<h2>${receiptSettings.shop || 'RESTAURANT'}</h2>
+${receiptSettings.address ? `<p>${receiptSettings.address}</p>` : ''}
+${receiptSettings.phone ? `<p>Mob: ${receiptSettings.phone}</p>` : ''}
+<p style="font-size:10px;">${orderData.date}</p>
+<hr/>
+<p style="text-align:left;line-height:1.5;">
+  <strong>Order #${orderData.id}</strong><br/>
+  <strong>Cust:</strong> ${orderData.customer}<br/>
+  <strong>Phone:</strong> ${orderData.phone}<br/>
+  <strong>Table:</strong> ${orderData.table}<br/>
+  <strong>Payment:</strong> ${orderData.payment}
+</p>
+<hr/>
+<table>
+  <thead>
+    <tr style="border-bottom:1px dashed black;">
+      <th class="left">Item</th>
+      <th class="center">Qty</th>
+      <th class="right">Price</th>
+      <th class="right">Total</th>
+    </tr>
+  </thead>
+  <tbody>${itemsHtml}</tbody>
+</table>
+<hr/>
+<div class="total-row"><span>Subtotal:</span><span>&#8377;${parseFloat(bills.total||0).toFixed(2)}</span></div>
+<div class="total-row"><span>CGST &amp; SGST (18%):</span><span>&#8377;${parseFloat(bills.tax||0).toFixed(2)}</span></div>
+<div class="total-row grand-total"><span>TOTAL AMOUNT:</span><span>&#8377;${parseFloat(bills.totalWithTax||0).toFixed(2)}</span></div>
+<hr/>
+<p>Thank you for visiting!<br/>Have a great day!</p>
+<script>window.onload = function() { window.print(); }<\/script>
+</body></html>`);
+            win.document.close();
 
         } catch(err) {
             console.error('Print error:', err);
-            receiptEl.style.display = 'none';
             alert('Could not load order for printing: ' + err.message);
         }
     }
