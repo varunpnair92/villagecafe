@@ -75,6 +75,7 @@
         <span>👤</span> Customer Info
       </h3>
       <div class="grid grid-cols-2 gap-y-2 text-sm">
+
         <span class="text-brand-textGray">Name:</span>
         <strong class="text-white text-right truncate">{{ customer.name|default:"N/A" }}</strong>
         
@@ -213,6 +214,22 @@
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+
     // Injected menu constants
     const menuData = {{ menus_json|safe }};
     
@@ -400,7 +417,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
+                        'X-CSRFToken': csrftoken
                     },
                     body: JSON.stringify({ amount: total })
                 });
@@ -505,7 +522,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': csrftoken
                 },
                 body: JSON.stringify(orderPayload)
             });

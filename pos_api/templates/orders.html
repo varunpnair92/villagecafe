@@ -3,6 +3,24 @@
 {% block title %}POS | Orders{% endblock %}
 
 {% block content %}
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+</script>
+
 <section class="h-[calc(100vh-8rem)] overflow-hidden flex flex-col p-4">
 
   <!-- Header & Controls -->
@@ -304,7 +322,7 @@
             const response = await fetch(`/order/delete/${id}/`, {
                 method: 'DELETE',
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': csrftoken
                 }
             });
             const data = await response.json();
@@ -365,11 +383,11 @@
     // Ajax update order status
     async function updateOrderStatus(orderId, newStatus) {
         try {
-            const response = await fetch(`/api/order/${orderId}`, {
+            const response = await fetch(`/api/order/${orderId}/`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': csrftoken
                 },
                 body: JSON.stringify({ orderStatus: newStatus })
             });

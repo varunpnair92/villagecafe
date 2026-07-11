@@ -19,7 +19,7 @@ urlpatterns = [
 
     # Order Routes
     path('order/', OrderListCreateView.as_view(), name='order-list-create'),
-    path('order/<int:id>', OrderDetailView.as_view(), name='order-detail'),
+    path('order/<int:id>/', OrderDetailView.as_view(), name='order-detail'),
 
     # Payment Routes
     path('payment/create-order', CreateRazorpayOrderView.as_view(), name='create-order'),
