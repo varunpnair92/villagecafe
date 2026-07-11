@@ -349,6 +349,19 @@
             </label>
           </div>
         </div>
+        <div>
+          <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Print Method</label>
+          <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="print-method" id="method-iframe" value="iframe" class="accent-brand-gold w-4 h-4">
+              <span class="text-white text-sm font-semibold">Direct Print <span class="text-brand-textGray text-xs">(Hidden background, no bill preview)</span></span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="print-method" id="method-popup" value="popup" checked class="accent-brand-gold w-4 h-4">
+              <span class="text-white text-sm font-semibold">Show Bill & Print <span class="text-brand-textGray text-xs">(Popup window)</span></span>
+            </label>
+          </div>
+        </div>
         <div class="flex gap-3 pt-1">
           <button onclick="savePrinterSettings()" class="bg-brand-gold hover:bg-brand-darkGold text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">
             Save Printer Settings
@@ -538,29 +551,39 @@
         // Load printer settings
         const printerName = localStorage.getItem('pos_printer_name') || '';
         const printerWidth = localStorage.getItem('pos_receipt_width') || '80';
+        const printMethod = localStorage.getItem('pos_print_method') || 'popup';
+        
         const printerNameEl = document.getElementById('pos-printer-name');
         if (printerNameEl) printerNameEl.value = printerName;
+        
         const widthRadio = document.getElementById(`width-${printerWidth}`);
         if (widthRadio) widthRadio.checked = true;
+        
+        const methodRadio = document.getElementById(`method-${printMethod}`);
+        if (methodRadio) methodRadio.checked = true;
     }
 
     // Printer Settings
     function savePrinterSettings() {
         const name = document.getElementById('pos-printer-name').value.trim();
         const width = document.querySelector('input[name="receipt-width"]:checked')?.value || '80';
+        const method = document.querySelector('input[name="print-method"]:checked')?.value || 'popup';
+        
         localStorage.setItem('pos_printer_name', name);
         localStorage.setItem('pos_receipt_width', width);
-        showToastMsg(`Printer settings saved! Printer: "${name || 'Not set'}", Width: ${width}mm`);
+        localStorage.setItem('pos_print_method', method);
+        
+        showToastMsg(`Printer settings saved! Method: ${method === 'iframe' ? 'Direct' : 'Popup'}`);
     }
 
     // Test Print — prints a sample receipt
     function testPrint() {
         const printerName = localStorage.getItem('pos_printer_name') || 'Not set';
         const width = localStorage.getItem('pos_receipt_width') || '80';
+        const printMethod = localStorage.getItem('pos_print_method') || 'popup';
         const settings = JSON.parse(localStorage.getItem('pos_receipt_settings') || '{"shop":"VILLAGE CAFE","address":"123 Main Road, City","phone":"+91 9876543210"}');
-        // Open a small popup with receipt preview
-        const win = window.open('', '_blank', 'width=400,height=600');
-        win.document.write(`
+        
+        const htmlContent = `
             <!DOCTYPE html>
             <html><head><title>Test Receipt</title>
             <style>
@@ -593,8 +616,26 @@
             <p>Thank you for visiting!</p>
             <script>window.onload = function() { window.print(); }<\/script>
             </body></html>
-        `);
-        win.document.close();
+        `;
+
+        if (printMethod === 'iframe') {
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            iframe.style.visibility = 'hidden';
+            document.body.appendChild(iframe);
+            iframe.contentWindow.document.open();
+            iframe.contentWindow.document.write(htmlContent);
+            iframe.contentWindow.document.close();
+            // Optional: clean up iframe after some time
+            setTimeout(() => { document.body.removeChild(iframe); }, 10000);
+        } else {
+            const win = window.open('', '_blank', 'width=400,height=600');
+            win.document.write(htmlContent);
+            win.document.close();
+        }
     }
 
     // Simple in-app toast notification

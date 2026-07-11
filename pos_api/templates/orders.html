@@ -364,6 +364,7 @@
             if (raw) { try { receiptSettings = JSON.parse(raw); } catch(e){} }
 
             const width = localStorage.getItem('pos_receipt_width') || '80';
+            const printMethod = localStorage.getItem('pos_print_method') || 'popup';
             const bills = orderData.bills || {};
             const items = orderData.items || [];
 
@@ -388,9 +389,7 @@
                 </tr>`;
             });
 
-            // Open popup and write receipt HTML directly — no CSS inheritance issues
-            const win = window.open('', '_blank', `width=${parseInt(width)*4+80},height=700`);
-            win.document.write(`<!DOCTYPE html>
+            const htmlContent = `<!DOCTYPE html>
 <html><head><title>Receipt - Order #${orderData.id}</title>
 <style>
   body { font-family:'Courier New',Courier,monospace; font-size:11px; margin:0; padding:4mm; width:${width}mm; color:black; background:white; }
@@ -438,8 +437,25 @@ ${receiptSettings.phone ? `<p>Mob: ${receiptSettings.phone}</p>` : ''}
 <hr/>
 <p>Thank you for visiting!<br/>Have a great day!</p>
 <script>window.onload = function() { window.print(); }<\/script>
-</body></html>`);
-            win.document.close();
+</body></html>`;
+
+            if (printMethod === 'iframe') {
+                const iframe = document.createElement('iframe');
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                iframe.style.visibility = 'hidden';
+                document.body.appendChild(iframe);
+                iframe.contentWindow.document.open();
+                iframe.contentWindow.document.write(htmlContent);
+                iframe.contentWindow.document.close();
+                setTimeout(() => { document.body.removeChild(iframe); }, 10000);
+            } else {
+                const win = window.open('', '_blank', `width=${parseInt(width)*4+80},height=700`);
+                win.document.write(htmlContent);
+                win.document.close();
+            }
 
         } catch(err) {
             console.error('Print error:', err);
