@@ -6,6 +6,10 @@ from .models import User
 
 class CookieJWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
+        # Fall back to standard session authentication if user is already logged in
+        if request.user and request.user.is_authenticated:
+            return (request.user, None)
+
         # Extract token from the cookies
         token = request.COOKIES.get('accessToken')
         if not token:

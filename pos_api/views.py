@@ -442,6 +442,21 @@ def get_dynamic_menus():
 
 class MenuTemplateView(LoginRequiredMixin, View):
     def get(self, request):
+        edit_id = request.GET.get('edit_order')
+        if edit_id:
+            try:
+                order = Order.objects.get(id=edit_id)
+                customer = {
+                    'name': order.customerDetails.get('name'),
+                    'phone': order.customerDetails.get('phone'),
+                    'guests': order.customerDetails.get('guests', 1),
+                    'table_id': order.table.id if order.table else None,
+                    'table_no': order.table.tableNo if order.table else None,
+                }
+                request.session['customer'] = customer
+            except Order.DoesNotExist:
+                pass
+
         customer = request.session.get('customer')
         if not customer:
             return redirect('/tables/')
@@ -907,18 +922,62 @@ class OrderUpdateView(LoginRequiredMixin, View):
             }
             order.paymentMethod = payment_method
 
+            # Update orderStatus if provided in request body
+            order_status = data.get('orderStatus')
+            if order_status:
+                order.orderStatus = order_status
+                # If status becomes Completed or Cancelled, we free up the occupied table
+                if order_status in ['Completed', 'Cancelled'] and order.table:
+                    tbl = order.table
+                    tbl.status = 'Available'
+                    tbl.currentOrder = None
+                    tbl.save()
+
+            # Update customerDetails if provided in request body
+            customer_details = data.get('customerDetails')
+            if customer_details:
+                order.customerDetails = customer_details
+
             # Update Table mapping if changed
             if table_id:
                 try:
                     table = Table.objects.get(id=table_id)
+                    # If table changed, free up the old one
+                    if order.table and order.table != table:
+                        old_table = order.table
+                        if old_table.currentOrder_id == order.id:
+                            old_table.currentOrder = None
+                            old_table.status = "Available"
+                            old_table.save()
+
                     order.table = table
-                    table.status = "Occupied"
-                    table.currentOrder = order
+                    if order.orderStatus not in ['Completed', 'Cancelled']:
+                        table.status = "Occupied"
+                        table.currentOrder = order
+                    else:
+                        table.status = "Available"
+                        table.currentOrder = None
                     table.save()
                 except Table.DoesNotExist:
                     pass
 
             order.save()
+
+            # Create payment record in DB if cash/card checkout completed
+            if order.orderStatus == 'Completed' and order.paymentMethod in ['Cash', 'Card']:
+                if not Payment.objects.filter(orderId=str(order.id)).exists():
+                    Payment.objects.create(
+                        paymentId=f"CASH_{int(timezone.now().timestamp())}",
+                        orderId=str(order.id),
+                        amount=float(order.bills.get('totalWithTax', 0)),
+                        currency="INR",
+                        status="captured",
+                        method=order.paymentMethod.lower(),
+                        email=request.user.email if request.user.is_authenticated else 'unknown@cafe.com',
+                        contact=order.customerDetails.get('phone', ''),
+                        createdAt=timezone.now()
+                    )
+
             return JsonResponse({'success': True, 'message': 'Order updated successfully'})
         except Order.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Order not found'}, status=404)

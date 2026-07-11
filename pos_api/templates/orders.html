@@ -299,6 +299,21 @@
 <script>
     let activeFilter = 'all';
 
+    // Simple in-app toast notification
+    function showToastMsg(msg) {
+        let toast = document.getElementById('app-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'app-toast';
+            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;background:#1f1f1f;border:1px solid #f6b100;color:white;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,0.4);transition:opacity 0.3s;';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.opacity = '1';
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => { toast.style.display = 'none'; }, 300); }, 3000);
+    }
+
     // Toggle expanded item detail row
     function toggleExpand(orderId) {
         const row = document.getElementById(`expand-row-${orderId}`);
