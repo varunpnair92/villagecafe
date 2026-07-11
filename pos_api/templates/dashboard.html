@@ -319,6 +319,10 @@
           <label class="block text-brand-textGray mb-2 text-xs font-semibold uppercase tracking-wider">Mobile / Phone</label>
           <input type="text" id="pos-print-phone" value="+91 9876543210" class="w-full bg-[#262626] border border-[#343434] rounded-lg p-3 text-white focus:outline-none text-sm">
         </div>
+        <div class="flex items-center gap-3 py-1">
+          <input type="checkbox" id="pos-enable-gst" class="accent-brand-gold w-4 h-4 rounded cursor-pointer">
+          <label for="pos-enable-gst" class="text-white text-sm font-semibold select-none cursor-pointer">Enable GST (18%) on Bills</label>
+        </div>
         <button onclick="saveReceiptSettings()" class="bg-brand-gold hover:bg-brand-darkGold text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">
           Save Receipt Settings
         </button>
@@ -519,6 +523,7 @@
                 content.classList.add('hidden');
             }
         });
+        localStorage.setItem('dashboard_active_tab', tabName);
     }
 
     // Modal helpers
@@ -534,8 +539,9 @@
         const shop = document.getElementById('pos-print-shop').value;
         const address = document.getElementById('pos-print-address').value;
         const phone = document.getElementById('pos-print-phone').value;
-        localStorage.setItem('pos_receipt_settings', JSON.stringify({ shop, address, phone }));
-        showToastMsg('Receipt header settings saved!');
+        const enableGst = document.getElementById('pos-enable-gst').checked;
+        localStorage.setItem('pos_receipt_settings', JSON.stringify({ shop, address, phone, enableGst }));
+        showToastMsg('Receipt settings saved!');
     }
 
     function loadReceiptSettings() {
@@ -546,7 +552,10 @@
                 if (settings.shop) document.getElementById('pos-print-shop').value = settings.shop;
                 if (settings.address) document.getElementById('pos-print-address').value = settings.address;
                 if (settings.phone) document.getElementById('pos-print-phone').value = settings.phone;
+                document.getElementById('pos-enable-gst').checked = (settings.enableGst !== false);
             } catch(e) {}
+        } else {
+            document.getElementById('pos-enable-gst').checked = true; // default to true
         }
         // Load printer settings
         const printerName = localStorage.getItem('pos_printer_name') || '';
@@ -581,8 +590,17 @@
         const printerName = localStorage.getItem('pos_printer_name') || 'Not set';
         const width = localStorage.getItem('pos_receipt_width') || '80';
         const printMethod = localStorage.getItem('pos_print_method') || 'popup';
-        const settings = JSON.parse(localStorage.getItem('pos_receipt_settings') || '{"shop":"VILLAGE CAFE","address":"123 Main Road, City","phone":"+91 9876543210"}');
+        const settings = JSON.parse(localStorage.getItem('pos_receipt_settings') || '{"shop":"VILLAGE CAFE","address":"123 Main Road, City","phone":"+91 9876543210","enableGst":true}');
         
+        const enableGst = (settings.enableGst !== false);
+        const subtotal = 300.00;
+        const tax = enableGst ? 54.00 : 0.00;
+        const total = subtotal + tax;
+
+        const taxRow = enableGst 
+            ? `<div style="display:flex;justify-content:space-between"><span>CGST &amp; SGST (18%):</span><span>&#8377;54.00</span></div>` 
+            : '';
+
         const htmlContent = `
             <!DOCTYPE html>
             <html><head><title>Test Receipt</title>
@@ -609,9 +627,9 @@
                 <tr><td>Beverages</td><td class="center">1</td><td class="right">&#8377;60.00</td><td class="right">&#8377;60.00</td></tr>
             </table>
             <hr/>
-            <div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>&#8377;300.00</span></div>
-            <div style="display:flex;justify-content:space-between"><span>CGST &amp; SGST (18%):</span><span>&#8377;54.00</span></div>
-            <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed black;padding-top:3px;margin-top:3px"><span>TOTAL:</span><span>&#8377;354.00</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
+            ${taxRow}
+            <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed black;padding-top:3px;margin-top:3px"><span>TOTAL:</span><span>&#8377;${total.toFixed(2)}</span></div>
             <hr/>
             <p>Thank you for visiting!</p>
             <script>window.onload = function() { window.print(); }<\/script>
@@ -823,6 +841,8 @@
     }
 
     // Initialize
+    const activeTab = localStorage.getItem('dashboard_active_tab') || 'Metrics';
+    switchTab(activeTab);
     loadReceiptSettings();
     renderAdminCategories();
     renderAdminItems();

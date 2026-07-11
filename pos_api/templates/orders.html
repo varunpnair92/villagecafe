@@ -447,6 +447,11 @@
             const phoneText = receiptSettings.phone || '';
             const separator = (addressText && phoneText) ? ' | ' : '';
 
+            const taxVal = parseFloat(bills.tax || 0);
+            const taxRowHtml = taxVal > 0 
+                ? `<div class="total-row"><span>CGST &amp; SGST (18%):</span><span>&#8377;${taxVal.toFixed(2)}</span></div>`
+                : '';
+
             const htmlContent = `<!DOCTYPE html>
 <html><head><title>Receipt - Order #${orderData.id}</title>
 <style>
@@ -481,7 +486,7 @@
 </table>
 <hr/>
 <div class="total-row"><span>Subtotal:</span><span>&#8377;${parseFloat(bills.total||0).toFixed(2)}</span></div>
-<div class="total-row"><span>CGST &amp; SGST (18%):</span><span>&#8377;${parseFloat(bills.tax||0).toFixed(2)}</span></div>
+${taxRowHtml}
 <div class="total-row grand-total"><span>TOTAL AMOUNT:</span><span>&#8377;${parseFloat(bills.totalWithTax||0).toFixed(2)}</span></div>
 <hr/>
 <p>Thank you for visiting!<br/>Have a great day!</p>

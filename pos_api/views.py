@@ -894,8 +894,9 @@ class OrderUpdateView(LoginRequiredMixin, View):
                 return JsonResponse({'success': False, 'message': 'Cart is empty'}, status=400)
 
             # Recalculate totals
+            enable_gst = data.get('enableGst', True)
             subtotal = sum(float(item['total']) for item in items)
-            tax = subtotal * 0.18
+            tax = subtotal * 0.18 if enable_gst else 0.0
             total_with_tax = subtotal + tax
 
             order.items = items

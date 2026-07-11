@@ -48,8 +48,7 @@
       <div class="flex items-center gap-3">
         <span class="text-3xl leading-none">📖</span>
         <div class="flex flex-col">
-          <h3 id="cust-name-header" class="text-white font-bold leading-tight">{{ customer.name|default:"Customer Name" }}</h3>
-          <span class="text-brand-textGray text-xs font-semibold">Table: {{ customer.table_no|default:"N/A" }}</span>
+          <span class="text-brand-gold text-base font-black tracking-wide">Table: {{ customer.table_no|default:"N/A" }}</span>
         </div>
       </div>
     </div>
@@ -61,6 +60,16 @@
 
     <!-- Items Grid -->
     <div class="flex-1 overflow-y-auto p-6 scrollbar-hide">
+      <!-- Keyboard Search Indicator -->
+      <div id="keyboard-search-bar" class="hidden mb-4 bg-brand-gold/10 border border-brand-gold/40 rounded-xl px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🔍</span>
+          <span class="text-sm font-semibold text-brand-textGray">Keyboard Search:</span>
+          <strong id="search-query-text" class="text-brand-gold text-lg tracking-wider font-bold"></strong>
+        </div>
+        <span class="text-xs text-brand-textGray">[Type letters to search | Press 1-9 to add 1st item | Esc to clear]</span>
+      </div>
+
       <div id="items-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <!-- Generated dynamically in javascript -->
       </div>
@@ -69,23 +78,6 @@
 
   <!-- Right Div (Cart Sidebar) -->
   <div class="flex-[1.2] bg-[#1a1a1a] border border-[#2a2a2a] h-full rounded-xl flex flex-col overflow-hidden">
-    <!-- Customer Details Card -->
-    <div class="p-5 border-b border-[#2a2a2a] shrink-0">
-      <h3 class="text-white text-base font-bold mb-3 tracking-wide flex items-center gap-2">
-        <span>👤</span> Customer Info
-      </h3>
-      <div class="grid grid-cols-2 gap-y-2 text-sm">
-
-        <span class="text-brand-textGray">Name:</span>
-        <strong class="text-white text-right truncate">{{ customer.name|default:"N/A" }}</strong>
-        
-        <span class="text-brand-textGray">Phone:</span>
-        <span class="text-white text-right font-medium">{{ customer.phone|default:"N/A" }}</span>
-        
-        <span class="text-brand-textGray">Guests:</span>
-        <span class="text-white text-right font-medium">{{ customer.guests|default:"0" }} Person(s)</span>
-      </div>
-    </div>
 
     <!-- Cart items list -->
     <div class="flex-1 overflow-y-auto p-5 scrollbar-hide flex flex-col justify-start">
@@ -105,7 +97,7 @@
           <span class="text-brand-textGray">Subtotal:</span>
           <span id="bill-subtotal" class="text-white font-semibold">₹0.00</span>
         </div>
-        <div class="flex justify-between">
+        <div id="bill-tax-row" class="flex justify-between">
           <span class="text-brand-textGray">CGST & SGST (18%):</span>
           <span id="bill-tax" class="text-white font-semibold">₹0.00</span>
         </div>
@@ -236,7 +228,9 @@
     let activeCategory = menuData[0];
     let cart = []; // store selected items: [{id, name, price, quantity, total}]
     let editingOrderId = null;
-    let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210' };
+    let receiptSettings = { shop: 'VILLAGE CAFE', address: '123 Main Road, City', phone: '+91 9876543210', enableGst: true };
+    let keySearchQuery = '';
+    let matchedItems = [];
 
     // Render category selectors
     function renderCategories() {
@@ -266,17 +260,33 @@
         const container = document.getElementById('items-grid');
         container.innerHTML = '';
         
-        activeCategory.items.forEach(item => {
+        let itemsToRender = [];
+        if (keySearchQuery.length > 0) {
+            itemsToRender = matchedItems;
+        } else {
+            itemsToRender = activeCategory.items;
+        }
+
+        if (itemsToRender.length === 0) {
+            container.innerHTML = `<p class="col-span-full text-brand-textGray text-center py-10 font-semibold">No items found</p>`;
+            return;
+        }
+        
+        itemsToRender.forEach(item => {
             const cartItem = cart.find(c => c.id === item.id);
             const itemQty = cartItem ? cartItem.quantity : 0;
             const card = document.createElement('div');
-            card.className = "flex flex-col justify-between p-4 rounded-xl hover:bg-[#2c2c2c] bg-[#262626] border border-[#343434] transition duration-200 h-[140px]";
+            
+            const isFirstSearched = (keySearchQuery.length > 0 && itemsToRender[0].id === item.id);
+            card.className = `flex flex-col justify-between p-4 rounded-xl hover:bg-[#2c2c2c] bg-[#262626] border transition duration-200 h-[140px]
+              ${isFirstSearched ? 'border-brand-gold ring-1 ring-brand-gold/40 shadow-lg shadow-brand-gold/5' : 'border-[#343434]'}`;
             
             const escapedName = item.name.replace(/'/g, "\\'");
             
             card.innerHTML = `
                 <div class="flex items-start justify-between w-full">
                     <h3 class="text-white text-base font-bold tracking-wide truncate max-w-[150px]" title="${item.name}">${item.name}</h3>
+                    ${isFirstSearched ? '<span class="bg-brand-gold text-black text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">Press 1-9 to add</span>' : ''}
                 </div>
                 <div class="flex items-center justify-between mt-3">
                     <p class="text-brand-gold text-lg font-black">₹${item.price}</p>
@@ -292,18 +302,18 @@
     }
 
     // Direct plus / minus cart updates
-    function incrementQty(itemId, name, price) {
+    function incrementQty(itemId, name, price, qty = 1) {
         const existingIdx = cart.findIndex(c => c.id === itemId);
         if (existingIdx !== -1) {
-            cart[existingIdx].quantity += 1;
+            cart[existingIdx].quantity += qty;
             cart[existingIdx].total = cart[existingIdx].quantity * price;
         } else {
             cart.push({
                 id: itemId,
                 name: name,
                 price: price,
-                quantity: 1,
-                total: price
+                quantity: qty,
+                total: qty * price
             });
         }
         updateCartDisplay();
@@ -367,8 +377,11 @@
             container.appendChild(itemRow);
         });
 
-        const tax = subtotal * 0.18;
+        const enableGst = (receiptSettings.enableGst !== false);
+        const tax = enableGst ? (subtotal * 0.18) : 0.0;
         const total = subtotal + tax;
+
+        document.getElementById('bill-tax-row').style.display = enableGst ? 'flex' : 'none';
 
         document.getElementById('bill-subtotal').textContent = `₹${subtotal.toFixed(2)}`;
         document.getElementById('bill-tax').textContent = `₹${tax.toFixed(2)}`;
@@ -384,10 +397,12 @@
 
         const pMethod = document.getElementById('payment-method').value;
         const subtotal = cart.reduce((acc, item) => acc + item.total, 0);
-        const tax = subtotal * 0.18;
+        const enableGst = (receiptSettings.enableGst !== false);
+        const tax = enableGst ? (subtotal * 0.18) : 0.0;
         const total = subtotal + tax;
 
         const checkoutData = {
+            enableGst: enableGst,
             customerDetails: {
                 name: '{{ customer.name }}',
                 phone: '{{ customer.phone }}',
@@ -486,10 +501,12 @@
 
         const pMethod = document.getElementById('payment-method').value;
         const subtotal = cart.reduce((acc, item) => acc + item.total, 0);
-        const tax = subtotal * 0.18;
+        const enableGst = (receiptSettings.enableGst !== false);
+        const tax = enableGst ? (subtotal * 0.18) : 0.0;
         const total = subtotal + tax;
 
         const checkoutData = {
+            enableGst: enableGst,
             customerDetails: {
                 name: '{{ customer.name }}',
                 phone: '{{ customer.phone }}',
@@ -529,14 +546,27 @@
             const data = await response.json();
             if (data.success) {
                 if (shouldPrint) {
-                    // Open receipt popup (non-blocking), then redirect
+                    // Open receipt popup (non-blocking)
                     const printedOrderId = editingOrderId || data.id || 'NEW';
                     printPOSReceipt(printedOrderId);
-                    setTimeout(() => { window.location.href = '/orders/'; }, 300);
                 } else {
                     alert(editingOrderId ? 'Order updated successfully!' : 'Order placed successfully!');
-                    window.location.href = '/orders/';
                 }
+
+                // Clear cart and reset editing state
+                cart = [];
+                editingOrderId = null;
+                updateCartDisplay();
+                renderItems();
+
+                // Reset buttons to default state
+                const btnPayOnly = document.querySelector('button[onclick="handleCheckout()"]');
+                const btnPayPrint = document.querySelector('button[onclick="checkoutAndPrint()"]');
+                if (btnPayOnly) btnPayOnly.textContent = "Pay & Place Order";
+                if (btnPayPrint) btnPayPrint.innerHTML = "🖨️";
+
+                // Strip the edit_order query parameter from the URL bar without reloading
+                window.history.pushState({}, document.title, window.location.pathname);
             } else {
                 alert(data.message || 'Failed to place order.');
             }
@@ -560,8 +590,9 @@
         const now = new Date().toLocaleString();
 
         // Build totals
+        const enableGst = (receiptSettings.enableGst !== false);
         const subtotal = cart.reduce((acc, item) => acc + item.total, 0);
-        const tax = subtotal * 0.18;
+        const tax = enableGst ? (subtotal * 0.18) : 0.0;
         const total = subtotal + tax;
 
         // Build items rows HTML
@@ -588,6 +619,10 @@
         const addressText = receiptSettings.address || '';
         const phoneText = receiptSettings.phone || '';
         const separator = (addressText && phoneText) ? ' | ' : '';
+
+        const taxRowHtml = enableGst 
+            ? `<div class="total-row"><span>CGST &amp; SGST (18%):</span><span>&#8377;${tax.toFixed(2)}</span></div>`
+            : '';
 
         const htmlContent = `<!DOCTYPE html>
 <html><head><title>Receipt</title>
@@ -623,7 +658,7 @@
 </table>
 <hr/>
 <div class="total-row"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
-<div class="total-row"><span>CGST &amp; SGST (18%):</span><span>&#8377;${tax.toFixed(2)}</span></div>
+${taxRowHtml}
 <div class="total-row grand-total"><span>TOTAL AMOUNT:</span><span>&#8377;${total.toFixed(2)}</span></div>
 <hr/>
 <p>Thank you for visiting!<br/>Have a great day!</p>
@@ -676,6 +711,96 @@
             }
         }
     }
+
+    function updateSearchState() {
+        const searchBar = document.getElementById('keyboard-search-bar');
+        const queryText = document.getElementById('search-query-text');
+        
+        if (keySearchQuery.length > 0) {
+            matchedItems = [];
+            const startsWithMatches = [];
+            const containsMatches = [];
+            
+            menuData.forEach(cat => {
+                cat.items.forEach(item => {
+                    const itemNameLower = item.name.toLowerCase();
+                    const queryLower = keySearchQuery.toLowerCase();
+                    
+                    if (itemNameLower.startsWith(queryLower)) {
+                        startsWithMatches.push(item);
+                    } else if (itemNameLower.includes(queryLower)) {
+                        containsMatches.push(item);
+                    }
+                });
+            });
+            
+            matchedItems = startsWithMatches.concat(containsMatches);
+            
+            if (searchBar) searchBar.classList.remove('hidden');
+            if (queryText) queryText.textContent = `"${keySearchQuery}"`;
+        } else {
+            matchedItems = [];
+            if (searchBar) searchBar.classList.add('hidden');
+        }
+        renderItems();
+    }
+
+    function handleGlobalKeyDown(e) {
+        // Ignore browser keyboard shortcuts
+        if (e.ctrlKey || e.metaKey || e.altKey) {
+            return;
+        }
+
+        // Ignore when standard input fields are focused
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        const key = e.key;
+
+        // Escape clears search
+        if (key === 'Escape') {
+            keySearchQuery = '';
+            updateSearchState();
+            return;
+        }
+
+        // Backspace deletes last character
+        if (key === 'Backspace') {
+            if (keySearchQuery.length > 0) {
+                keySearchQuery = keySearchQuery.slice(0, -1);
+                updateSearchState();
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // Numeric key (1-9) adds the first searched item to cart with that quantity
+        if (/^[1-9]$/.test(key)) {
+            if (keySearchQuery.length > 0 && matchedItems.length > 0) {
+                const firstItem = matchedItems[0];
+                const qty = parseInt(key);
+                const escapedName = firstItem.name.replace(/'/g, "\\'");
+                incrementQty(firstItem.id, escapedName, firstItem.price, qty);
+                
+                // Clear search query
+                keySearchQuery = '';
+                updateSearchState();
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // Normal characters (a-z, A-Z, space)
+        if (/^[a-zA-Z ]$/.test(key) && key.length === 1) {
+            keySearchQuery += key;
+            updateSearchState();
+            e.preventDefault();
+        }
+    }
+
+    // Register global keyboard listener
+    document.addEventListener('keydown', handleGlobalKeyDown);
 
     // Initialize
     loadReceiptSettings();
